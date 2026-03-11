@@ -1,65 +1,71 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import GameCard from '@/components/GameCard';
+import { storage } from '@/lib/storage';
+
+const GAMES = [
+  { name: 'Tic-Tac-Toe', emoji: '✕', href: '/tic-tac-toe', accent: '#60a5fa' },
+  { name: '2048', emoji: '🟧', href: '/2048', accent: '#f97316' },
+  { name: 'Wordle', emoji: '🟩', href: '/wordle', accent: '#22c55e' },
+  { name: 'Minesweeper', emoji: '💣', href: '/minesweeper', accent: '#ef4444' },
+  { name: 'Sudoku', emoji: '🔢', href: '/sudoku', accent: '#a78bfa' },
+  { name: 'Block Blast', emoji: '🟨', href: '/block-blast', accent: '#eab308' },
+  { name: 'Water Sort', emoji: '💧', href: '/water-sort', accent: '#06b6d4' },
+  { name: 'Solitaire', emoji: '🃏', href: '/solitaire', accent: '#10b981' },
+];
 
 export default function Home() {
+  const [stats, setStats] = useState<{ stat?: string; statLabel?: string }[]>(
+    GAMES.map(() => ({}))
+  );
+
+  useEffect(() => {
+    const tttWins = storage.tictactoe.getWinsVsAI();
+    const best2048 = storage['2048'].getBestScore('4x4');
+    const wordleStreak = storage.wordle.getDailyStreak();
+    const bbBest = storage.blockblast.getBestScore();
+    const solWon = storage.solitaire.getGamesWon();
+    const wsLevel = Math.max(
+      storage.watersort.getHighestLevel('easy'),
+      storage.watersort.getHighestLevel('medium'),
+      storage.watersort.getHighestLevel('hard')
+    );
+
+    setStats([
+      tttWins > 0 ? { stat: String(tttWins), statLabel: 'wins vs AI' } : {},
+      best2048 > 0 ? { stat: best2048.toLocaleString(), statLabel: 'best' } : {},
+      wordleStreak > 0 ? { stat: String(wordleStreak), statLabel: 'day streak' } : {},
+      {}, // minesweeper — best time varies by difficulty, skip for now
+      {}, // sudoku
+      bbBest > 0 ? { stat: bbBest.toLocaleString(), statLabel: 'best' } : {},
+      wsLevel > 0 ? { stat: `Lvl ${wsLevel}`, statLabel: 'reached' } : {},
+      solWon > 0 ? { stat: String(solWon), statLabel: 'wins' } : {},
+    ]);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ background: '#0f0f0f', minHeight: '100dvh' }}>
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white">Mini Games</h1>
+          <p className="text-sm mt-1" style={{ color: '#888' }}>C2T Builds · No accounts · No tracking</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className="grid grid-cols-2 gap-3">
+          {GAMES.map((game, i) => (
+            <GameCard
+              key={game.href}
+              name={game.name}
+              emoji={game.emoji}
+              href={game.href}
+              accent={game.accent}
+              stat={stats[i]?.stat}
+              statLabel={stats[i]?.statLabel}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
