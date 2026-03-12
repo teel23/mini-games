@@ -89,4 +89,26 @@ export const storage = {
     getWinsVsAI: () => getItem<number>('tictactoe', 'winsVsAI', 0),
     setWinsVsAI: (v: number) => setItem('tictactoe', 'winsVsAI', v),
   },
+  hangman: {
+    getWins: () => getItem<number>('hangman', 'wins', 0),
+    setWins: (v: number) => setItem('hangman', 'wins', v),
+    getBestStreak: () => getItem<number>('hangman', 'bestStreak', 0),
+    setBestStreak: (v: number) => setItem('hangman', 'bestStreak', v),
+  },
+  dotsboxes: {
+    getWins: () => getItem<number>('dotsboxes', 'wins', 0),
+    setWins: (v: number) => setItem('dotsboxes', 'wins', v),
+  },
+  battleship: {
+    getWins: () => getItem<number>('battleship', 'wins', 0),
+    setWins: (v: number) => setItem('battleship', 'wins', v),
+  },
+  checkers: {
+    getWins: () => getItem<number>('checkers', 'wins', 0),
+    setWins: (v: number) => setItem('checkers', 'wins', v),
+  },
+  chess: {
+    getWins: () => getItem<number>('chess', 'wins', 0),
+    setWins: (v: number) => setItem('chess', 'wins', v),
+  },
 };

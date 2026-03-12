@@ -21,7 +21,7 @@ export default function SolitairePage() {
 function Setup({ onStart }: { onStart: (mode: DrawMode) => void }) {
   const [mode, setMode] = useState<DrawMode>(1);
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #10b98111 0%, transparent 60%)' }}>
       <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
         <Link href="/" className="text-2xl">←</Link>
         <span className="font-bold text-white text-lg">Solitaire</span>
@@ -63,8 +63,8 @@ function Setup({ onStart }: { onStart: (mode: DrawMode) => void }) {
 
 function CardView({ card, small, selected }: { card: Card; small?: boolean; selected?: boolean }) {
   const red = cardColor(card) === 'red';
-  const w = small ? 36 : 48;
-  const h = small ? 52 : 68;
+  const w = small ? 44 : 52;
+  const h = small ? 62 : 74;
   return (
     <div
       className="rounded-lg flex flex-col justify-between select-none"
@@ -72,16 +72,17 @@ function CardView({ card, small, selected }: { card: Card; small?: boolean; sele
         width: w, height: h,
         background: selected ? '#2a4a3a' : '#fff',
         border: `2px solid ${selected ? ACCENT : '#ccc'}`,
-        padding: '2px 4px',
+        padding: '3px 4px',
         flexShrink: 0,
         position: 'relative',
+        minHeight: 44,
       }}
     >
-      <span style={{ fontSize: small ? 9 : 11, color: red ? '#dc2626' : '#1a1a1a', fontWeight: 700, lineHeight: 1 }}>
+      <span style={{ fontSize: small ? 11 : 13, color: red ? '#dc2626' : '#1a1a1a', fontWeight: 700, lineHeight: 1 }}>
         {card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank}
         {suitSymbol(card.suit)}
       </span>
-      <span style={{ fontSize: small ? 16 : 20, textAlign: 'center', color: red ? '#dc2626' : '#1a1a1a', lineHeight: 1 }}>
+      <span style={{ fontSize: small ? 18 : 22, textAlign: 'center', color: red ? '#dc2626' : '#1a1a1a', lineHeight: 1 }}>
         {suitSymbol(card.suit)}
       </span>
     </div>
@@ -89,25 +90,25 @@ function CardView({ card, small, selected }: { card: Card; small?: boolean; sele
 }
 
 function FaceDownCard({ small }: { small?: boolean }) {
-  const w = small ? 36 : 48;
-  const h = small ? 52 : 68;
+  const w = small ? 44 : 52;
+  const h = small ? 62 : 74;
   return (
     <div
       className="rounded-lg"
-      style={{ width: w, height: h, background: '#1e40af', border: '2px solid #2563eb', flexShrink: 0 }}
+      style={{ width: w, height: h, background: '#1e40af', border: '2px solid #2563eb', flexShrink: 0, minHeight: 44 }}
     />
   );
 }
 
 function EmptySlot({ small, label }: { small?: boolean; label?: string }) {
-  const w = small ? 36 : 48;
-  const h = small ? 52 : 68;
+  const w = small ? 44 : 52;
+  const h = small ? 62 : 74;
   return (
     <div
       className="rounded-lg flex items-center justify-center"
-      style={{ width: w, height: h, border: '2px dashed #2e2e2e', flexShrink: 0 }}
+      style={{ width: w, height: h, border: '2px dashed #2e2e2e', flexShrink: 0, minHeight: 44 }}
     >
-      {label && <span style={{ fontSize: 14, color: '#444' }}>{label}</span>}
+      {label && <span style={{ fontSize: 16, color: '#444' }}>{label}</span>}
     </div>
   );
 }
@@ -139,7 +140,7 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
   };
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #10b98111 0%, transparent 60%)' }}>
       {game.paused && (
         <PauseMenu onResume={() => game.setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -158,10 +159,10 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
       <div className="px-2 py-2 flex items-center justify-between">
         {/* Stock */}
         <div className="flex gap-1">
-          <div onClick={game.drawFromStock} className="cursor-pointer">
+          <div onClick={game.drawFromStock} className="cursor-pointer" style={{ minWidth: 52, minHeight: 74 }}>
             {state.stock.length > 0 ? <FaceDownCard /> : (
               <div className="rounded-lg flex items-center justify-center text-xl"
-                style={{ width: 48, height: 68, border: '2px dashed #2e2e2e', color: '#555' }}>↺</div>
+                style={{ width: 52, height: 74, border: '2px dashed #2e2e2e', color: '#555' }}>↺</div>
             )}
           </div>
           {/* Waste */}

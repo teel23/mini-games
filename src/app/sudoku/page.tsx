@@ -14,7 +14,7 @@ export default function SudokuPage() {
 
   if (!game.userGrid || !game.puzzle) {
     return (
-      <div className="min-h-dvh flex items-center justify-center" style={{ background: '#0f0f0f' }}>
+      <div className="min-h-dvh flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at center top, #a78bfa11 0%, transparent 60%)' }}>
         <p style={{ color: '#888' }}>Generating puzzle...</p>
       </div>
     );
@@ -23,7 +23,7 @@ export default function SudokuPage() {
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #a78bfa11 0%, transparent 60%)' }}>
       {game.paused && (
         <PauseMenu onResume={() => game.setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -166,7 +166,7 @@ export default function SudokuPage() {
               key={n}
               onClick={() => game.inputNumber(n)}
               className="aspect-square rounded-xl font-bold text-lg flex items-center justify-center"
-              style={{ background: '#1a1a1a', color: ACCENT, border: `1px solid #2e2e2e` }}
+              style={{ background: '#1a1a1a', color: ACCENT, border: `1px solid #2e2e2e`, minWidth: 36, minHeight: 36 }}
             >
               {n}
             </button>

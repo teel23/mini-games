@@ -38,7 +38,7 @@ export default function MinesweeperPage() {
   const isHard = difficulty === 'hard';
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #ef444411 0%, transparent 60%)' }}>
       {game.paused && (
         <PauseMenu onResume={() => game.setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -91,7 +91,7 @@ export default function MinesweeperPage() {
       </div>
 
       {/* Board */}
-      <div className="flex-1 overflow-auto px-2 pb-4">
+      <div className="flex-1 overflow-auto px-2 pb-4" onContextMenu={e => e.preventDefault()}>
         {!game.grid ? (
           <div className="flex items-center justify-center h-48">
             <div className="text-center">
@@ -104,7 +104,7 @@ export default function MinesweeperPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${config.cols}, ${isHard ? 24 : difficulty === 'medium' ? 26 : 36}px)`,
+              gridTemplateColumns: `repeat(${config.cols}, ${isHard ? 28 : difficulty === 'medium' ? 30 : 36}px)`,
               gap: 2,
               overflowX: 'auto',
               width: 'fit-content',
@@ -114,7 +114,7 @@ export default function MinesweeperPage() {
             {game.grid.flat().map((cell, idx) => {
               const r = Math.floor(idx / config.cols);
               const c = idx % config.cols;
-              const sz = isHard ? 24 : difficulty === 'medium' ? 26 : 36;
+              const sz = isHard ? 28 : difficulty === 'medium' ? 30 : 36;
 
               let bg = '#1a1a1a';
               let content: string = '';

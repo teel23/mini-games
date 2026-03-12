@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useBlockBlast } from '@/hooks/useBlockBlast';
 import PauseMenu from '@/components/PauseMenu';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ export default function BlockBlastPage() {
   const game = useBlockBlast();
   const [paused, setPaused] = useState(false);
   const [hoverCell, setHoverCell] = useState<[number, number] | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const ghostCells = hoverCell ? new Set(game.getGhost(hoverCell[0], hoverCell[1]).map(([r,c]) => `${r}-${c}`)) : new Set<string>();
 
@@ -21,8 +22,15 @@ export default function BlockBlastPage() {
     setHoverCell(null);
   }, [game]);
 
+  // Touch support: compute grid cell from touch coordinates
+  const handleTouchOnCell = useCallback((e: React.TouchEvent, r: number, c: number) => {
+    if (game.selectedPiece !== null) {
+      setHoverCell([r, c]);
+    }
+  }, [game.selectedPiece]);
+
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #eab30811 0%, transparent 60%)' }}>
       {paused && (
         <PauseMenu onResume={() => setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -49,6 +57,7 @@ export default function BlockBlastPage() {
       {/* Board */}
       <div className="flex justify-center px-2 overflow-x-auto">
         <div
+          ref={gridRef}
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${SIZE}, ${CELL_PX}px)`,
@@ -69,6 +78,7 @@ export default function BlockBlastPage() {
                   onClick={() => handleCellClick(r, c)}
                   onMouseEnter={() => setHoverCell([r, c])}
                   onMouseLeave={() => setHoverCell(null)}
+                  onTouchStart={(e) => handleTouchOnCell(e, r, c)}
                   className="rounded cursor-pointer"
                   style={{
                     width: CELL_PX,

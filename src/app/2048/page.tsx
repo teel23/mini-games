@@ -27,7 +27,7 @@ export default function Game2048() {
   const gap = size === 4 ? 8 : 6;
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #f9731611 0%, transparent 60%)' }}>
       {paused && (
         <PauseMenu
           onResume={() => setPaused(false)}

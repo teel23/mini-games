@@ -16,7 +16,7 @@ export default function WaterSortPage() {
   const tubesPerRow = Math.ceil(game.tubes.length / 2);
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #06b6d411 0%, transparent 60%)' }}>
       {paused && (
         <PauseMenu onResume={() => setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}

@@ -42,7 +42,7 @@ function Setup({ onStart }: { onStart: (m: Mode, d: Difficulty) => void }) {
   const [diff, setDiff] = useState<Difficulty>('hard');
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #60a5fa11 0%, transparent 60%)' }}>
       <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
         <Link href="/" className="text-2xl">←</Link>
         <span className="font-bold text-white text-lg">Tic-Tac-Toe</span>
@@ -135,7 +135,7 @@ function Game({
     : `${currentPlayer}'s turn`;
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #60a5fa11 0%, transparent 60%)' }}>
       {paused && (
         <PauseMenu
           onResume={() => setPaused(false)}

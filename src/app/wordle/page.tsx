@@ -42,7 +42,7 @@ export default function WordlePage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f', maxWidth: 480, margin: '0 auto' }}>
+    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #22c55e11 0%, transparent 60%)', maxWidth: 480, margin: '0 auto' }}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
         <Link href="/" className="text-2xl">←</Link>
