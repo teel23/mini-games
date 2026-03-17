@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTicTacToe, Mode, Difficulty } from '@/hooks/useTicTacToe';
 import PauseMenu from '@/components/PauseMenu';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
+import { playTick, playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#60a5fa';
 
@@ -121,6 +124,16 @@ function Game({
   onBack: () => void;
 }) {
   const { board, currentPlayer, winResult, draw, winsVsAI, paused, setPaused, handleClick, restart } = game;
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevResult = useRef<typeof winResult>(null);
+  useEffect(() => {
+    if (winResult && !prevResult.current) {
+      prevResult.current = winResult;
+      if (winResult.winner === 'X') { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else { haptic.error(); playError(); }
+    }
+    if (!winResult) prevResult.current = null;
+  }, [winResult]);
 
   const winLine = winResult?.line ?? [];
 

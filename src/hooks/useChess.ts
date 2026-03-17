@@ -301,7 +301,8 @@ function evaluate(board: Board): number {
   return score;
 }
 
-function minimaxChess(board: Board, depth: number, isMax: boolean, alpha: number, beta: number, enPassant: number | null): number {
+function minimaxChess(board: Board, depth: number, isMax: boolean, alpha: number, beta: number, enPassant: number | null, deadline: number): number {
+  if (Date.now() > deadline) return evaluate(board);
   const color: Color = isMax ? 'black' : 'white';
   const moves = legalMoves(board, color, enPassant);
 
@@ -316,7 +317,7 @@ function minimaxChess(board: Board, depth: number, isMax: boolean, alpha: number
     for (const m of moves) {
       const nb = applyMove(board, m);
       const ep = getEnPassantTarget(board, m);
-      best = Math.max(best, minimaxChess(nb, depth - 1, false, alpha, beta, ep));
+      best = Math.max(best, minimaxChess(nb, depth - 1, false, alpha, beta, ep, deadline));
       alpha = Math.max(alpha, best);
       if (beta <= alpha) break;
     }
@@ -326,7 +327,7 @@ function minimaxChess(board: Board, depth: number, isMax: boolean, alpha: number
     for (const m of moves) {
       const nb = applyMove(board, m);
       const ep = getEnPassantTarget(board, m);
-      best = Math.min(best, minimaxChess(nb, depth - 1, true, alpha, beta, ep));
+      best = Math.min(best, minimaxChess(nb, depth - 1, true, alpha, beta, ep, deadline));
       beta = Math.min(beta, best);
       if (beta <= alpha) break;
     }
@@ -353,13 +354,15 @@ function getAIMove(board: Board, difficulty: ChessDifficulty, enPassant: number 
     return moves[Math.floor(Math.random() * moves.length)];
   }
 
-  const depth = difficulty === 'hard' ? 3 : 2;
+  const depth = difficulty === 'hard' ? 4 : 3;
+  const deadline = Date.now() + 2000; // 2s max
   let bestMove = moves[0];
   let bestVal = -Infinity;
   for (const m of moves) {
+    if (Date.now() > deadline) break;
     const nb = applyMove(board, m);
     const ep = getEnPassantTarget(board, m);
-    const val = minimaxChess(nb, depth - 1, false, -Infinity, Infinity, ep);
+    const val = minimaxChess(nb, depth - 1, false, -Infinity, Infinity, ep, deadline);
     if (val > bestVal) { bestVal = val; bestMove = m; }
   }
   return bestMove;

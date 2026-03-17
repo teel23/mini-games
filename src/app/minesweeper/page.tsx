@@ -3,7 +3,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { useMinesweeper, Difficulty, GameMode } from '@/hooks/useMinesweeper';
 import PauseMenu from '@/components/PauseMenu';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError, playFlag } from '@/lib/sounds';
 
 const ACCENT = '#ef4444';
 
@@ -15,30 +18,73 @@ const CELL_COLORS: Record<number, string> = {
 export default function MinesweeperPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mode, setMode] = useState<GameMode>('random');
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [shakingBoard, setShakingBoard] = useState(false);
 
   const game = useMinesweeper(difficulty, mode);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleTouchStart = useCallback((r: number, c: number) => {
+  // Track if the long-press fired so we can suppress the subsequent pointerup click
+  const longPressFired = useRef(false);
+
+  const handlePointerDown = useCallback((r: number, c: number, e: React.PointerEvent) => {
+    longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
       game.handleLongPress(r, c);
+      haptic.light();
+      playFlag();
       longPressTimer.current = null;
-    }, 500);
+    }, 300);
   }, [game]);
 
-  const handleTouchEnd = useCallback((r: number, c: number, e: React.TouchEvent) => {
+  const handlePointerUp = useCallback((r: number, c: number, e: React.PointerEvent) => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return; // long-press already handled — don't also reveal
+    }
+    // It's a tap: reveal or chord
+    const cell = game.grid?.flat()[r * game.config.cols + c];
+    if (cell?.state === 'revealed') {
+      game.handleChord(r, c);
+    } else {
       game.handleClick(r, c);
     }
   }, [game]);
+
+  const handlePointerCancel = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
+  // Watch for win/lose to trigger effects
+  const prevWon = useRef(false);
+  const prevGameOver = useRef(false);
+  if (game.won && !prevWon.current) {
+    prevWon.current = true;
+    setShowWinConfetti(true);
+    haptic.win();
+    playWin();
+    setTimeout(() => setShowWinConfetti(false), 2100);
+  }
+  if (game.gameOver && !game.won && !prevGameOver.current) {
+    prevGameOver.current = true;
+    setShakingBoard(true);
+    haptic.error();
+    playError();
+    setTimeout(() => setShakingBoard(false), 500);
+  }
+  if (!game.won && !game.gameOver) { prevWon.current = false; prevGameOver.current = false; }
 
   const { config } = game;
   const isHard = difficulty === 'hard';
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #ef444411 0%, transparent 60%)' }}>
+      <ConfettiOverlay active={showWinConfetti} />
       {game.paused && (
         <PauseMenu onResume={() => game.setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -91,17 +137,21 @@ export default function MinesweeperPage() {
       </div>
 
       {/* Board */}
-      <div className="flex-1 overflow-auto px-2 pb-4" onContextMenu={e => e.preventDefault()}>
+      <div
+        className="flex-1 overflow-auto px-2 pb-4"
+        onContextMenu={e => e.preventDefault()}
+      >
         {!game.grid ? (
           <div className="flex items-center justify-center h-48">
             <div className="text-center">
               <p className="text-4xl mb-3">💣</p>
               <p style={{ color: '#888' }}>Tap a cell to start</p>
-              <p className="text-xs mt-1" style={{ color: '#555' }}>Long-press to flag</p>
+              <p className="text-xs mt-1" style={{ color: '#555' }}>Hold to flag</p>
             </div>
           </div>
         ) : (
           <div
+            className={shakingBoard ? 'animate-shake' : ''}
             style={{
               display: 'grid',
               gridTemplateColumns: `repeat(${config.cols}, ${isHard ? 28 : difficulty === 'medium' ? 30 : 36}px)`,
@@ -109,6 +159,7 @@ export default function MinesweeperPage() {
               overflowX: 'auto',
               width: 'fit-content',
               margin: '0 auto',
+              touchAction: 'none',
             }}
           >
             {game.grid.flat().map((cell, idx) => {
@@ -134,19 +185,19 @@ export default function MinesweeperPage() {
               return (
                 <div
                   key={idx}
-                  onClick={() => cell.state === 'revealed' ? game.handleChord(r, c) : game.handleClick(r, c)}
-                  onContextMenu={e => { e.preventDefault(); game.handleLongPress(r, c); }}
-                  onTouchStart={() => handleTouchStart(r, c)}
-                  onTouchEnd={e => handleTouchEnd(r, c, e)}
+                  onPointerDown={e => handlePointerDown(r, c, e)}
+                  onPointerUp={e => handlePointerUp(r, c, e)}
+                  onPointerCancel={handlePointerCancel}
+                  onContextMenu={e => { e.preventDefault(); game.handleLongPress(r, c); haptic.light(); playFlag(); }}
                   className="flex items-center justify-center rounded font-bold select-none"
                   style={{
-                    width: sz,
-                    height: sz,
+                    width: sz, height: sz,
                     background: bg,
                     border: `1px solid ${cell.state === 'revealed' ? '#333' : '#3a3a3a'}`,
                     fontSize: sz < 28 ? 10 : 14,
                     color: textColor,
                     cursor: 'pointer',
+                    touchAction: 'none',
                   }}
                 >
                   {content}

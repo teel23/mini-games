@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useHangman, HangmanMode, HangmanDifficulty } from '@/hooks/useHangman';
 import Link from 'next/link';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#f43f5e';
 
@@ -34,12 +37,23 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export default function HangmanPage() {
   const game = useHangman();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevGameOver = useRef(false);
+  useEffect(() => {
+    if (game.gameOver && !prevGameOver.current) {
+      prevGameOver.current = true;
+      if (game.won) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else { haptic.error(); playError(); }
+    }
+    if (!game.gameOver) prevGameOver.current = false;
+  }, [game.gameOver, game.won]);
 
-  if (!game.started) {
-    return <Setup game={game} />;
-  }
-
-  return <GameView game={game} />;
+  return (
+    <>
+      <ConfettiOverlay active={showConfetti} />
+      {!game.started ? <Setup game={game} /> : <GameView game={game} />}
+    </>
+  );
 }
 
 function Setup({ game }: { game: ReturnType<typeof useHangman> }) {

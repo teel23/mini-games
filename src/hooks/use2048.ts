@@ -106,6 +106,9 @@ export function use2048(boardMode: BoardMode) {
   const [gameOver, setGameOver] = useState(false);
   const [paused, setPaused] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [mergedPositions, setMergedPositions] = useState<Set<string>>(new Set());
+  const [newPositions, setNewPositions] = useState<Set<string>>(new Set());
+  const prevGridRef = useRef<Grid | null>(null);
 
   useEffect(() => {
     setBestScore(storage['2048'].getBestScore(boardMode));
@@ -117,7 +120,34 @@ export function use2048(boardMode: BoardMode) {
       const result = move(prev, dir);
       if (!result.moved) return prev;
 
+      // Find merged positions (cells that doubled in value)
+      const merged = new Set<string>();
+      for (let r = 0; r < result.grid.length; r++) {
+        for (let c = 0; c < result.grid[r].length; c++) {
+          const newVal = result.grid[r][c];
+          const oldVal = prev[r][c];
+          if (newVal > 0 && newVal === oldVal * 2 && oldVal > 0) {
+            merged.add(`${r}-${c}`);
+          }
+        }
+      }
+
       const newGrid = addRandomTile(result.grid);
+
+      // Find newly added tile positions
+      const added = new Set<string>();
+      for (let r = 0; r < newGrid.length; r++) {
+        for (let c = 0; c < newGrid[r].length; c++) {
+          if (newGrid[r][c] > 0 && result.grid[r][c] === 0) added.add(`${r}-${c}`);
+        }
+      }
+
+      prevGridRef.current = prev;
+      setMergedPositions(merged);
+      setNewPositions(added);
+      // Clear after animation
+      setTimeout(() => { setMergedPositions(new Set()); setNewPositions(new Set()); }, 200);
+
       setScore(s => {
         const ns = s + result.score;
         setBestScore(b => {
@@ -158,7 +188,7 @@ export function use2048(boardMode: BoardMode) {
     touchStart.current = null;
   }, [doMove]);
 
-  return { grid, score, bestScore, gameOver, paused, setPaused, doMove, restart, onTouchStart, onTouchEnd };
+  return { grid, score, bestScore, gameOver, paused, setPaused, doMove, restart, onTouchStart, onTouchEnd, mergedPositions, newPositions };
 }
 
 // Tile color mapping

@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBattleship, BSMode, BSDifficulty, BSSize, CellState } from '@/hooks/useBattleship';
 import Link from 'next/link';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#06b6d4';
 
@@ -25,11 +28,26 @@ function cellContent(state: CellState): string {
 
 export default function BattleshipPage() {
   const game = useBattleship();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevWinner = useRef<1 | 2 | null>(null);
+  useEffect(() => {
+    if (game.winner !== null && prevWinner.current === null) {
+      prevWinner.current = game.winner;
+      if (game.winner === 1) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else { haptic.error(); playError(); }
+    }
+    if (game.winner === null) prevWinner.current = null;
+  }, [game.winner]);
 
-  if (!game.started) return <Setup game={game} />;
-  if (game.phase === 'setup') return <ShipPlacement game={game} />;
-  if (game.pvpPhase === 'p2pass') return <PassScreen game={game} />;
-  return <BattleView game={game} />;
+  return (
+    <>
+      <ConfettiOverlay active={showConfetti} />
+      {!game.started && <Setup game={game} />}
+      {game.started && game.phase === 'setup' && <ShipPlacement game={game} />}
+      {game.started && game.phase === 'battle' && game.pvpPhase === 'p2pass' && <PassScreen game={game} />}
+      {game.started && game.phase === 'battle' && game.pvpPhase !== 'p2pass' && <BattleView game={game} />}
+    </>
+  );
 }
 
 function Setup({ game }: { game: ReturnType<typeof useBattleship> }) {

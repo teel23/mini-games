@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCheckers, CKMode, CKDifficulty } from '@/hooks/useCheckers';
 import Link from 'next/link';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#dc2626';
 const P1_COLOR = '#dc2626';
@@ -10,9 +13,23 @@ const P2_COLOR = '#1a1a1a';
 
 export default function CheckersPage() {
   const game = useCheckers();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevGameOver = useRef(false);
+  useEffect(() => {
+    if (game.gameOver && !prevGameOver.current) {
+      prevGameOver.current = true;
+      if (game.winner === 1) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else if (game.winner === 2) { haptic.error(); playError(); }
+    }
+    if (!game.gameOver) prevGameOver.current = false;
+  }, [game.gameOver, game.winner]);
 
-  if (!game.started) return <Setup game={game} />;
-  return <GameView game={game} />;
+  return (
+    <>
+      <ConfettiOverlay active={showConfetti} />
+      {!game.started ? <Setup game={game} /> : <GameView game={game} />}
+    </>
+  );
 }
 
 function Setup({ game }: { game: ReturnType<typeof useCheckers> }) {

@@ -9,10 +9,11 @@ interface GameCardProps {
   accent: string;
   stat?: string;
   statLabel?: string;
+  accentStat?: boolean;
   index?: number;
 }
 
-export default function GameCard({ name, emoji, href, accent, stat, statLabel, index = 0 }: GameCardProps) {
+export default function GameCard({ name, emoji, href, accent, stat, statLabel, accentStat, index = 0 }: GameCardProps) {
   return (
     <Link href={href}>
       <div
@@ -45,7 +46,9 @@ export default function GameCard({ name, emoji, href, accent, stat, statLabel, i
         <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#fff', textAlign: 'center' }}>{name}</div>
         {stat !== undefined && (
           <div style={{ marginTop: 'auto' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: accent }}>{stat}</span>
+            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: accentStat ? accent : accent }}>
+              {stat}
+            </span>
             {statLabel && <span style={{ fontSize: '0.7rem', marginLeft: 4, color: '#aaa' }}>{statLabel}</span>}
           </div>
         )}

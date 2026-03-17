@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSudoku, Difficulty, GameMode } from '@/hooks/useSudoku';
 import PauseMenu from '@/components/PauseMenu';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#a78bfa';
 
@@ -11,6 +14,18 @@ export default function SudokuPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mode, setMode] = useState<GameMode>('random');
   const game = useSudoku(difficulty, mode);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevWon = useRef(false);
+  useEffect(() => {
+    if (game.won && !prevWon.current) {
+      prevWon.current = true;
+      setShowConfetti(true);
+      haptic.win();
+      playWin();
+      setTimeout(() => setShowConfetti(false), 2100);
+    }
+    if (!game.won) prevWon.current = false;
+  }, [game.won]);
 
   if (!game.userGrid || !game.puzzle) {
     return (
@@ -23,7 +38,9 @@ export default function SudokuPage() {
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #a78bfa11 0%, transparent 60%)' }}>
+    <>
+      <ConfettiOverlay active={showConfetti} />
+      <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #a78bfa11 0%, transparent 60%)' }}>
       {game.paused && (
         <PauseMenu onResume={() => game.setPaused(false)} onRestart={game.restart} accentColor={ACCENT} />
       )}
@@ -188,5 +205,6 @@ export default function SudokuPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

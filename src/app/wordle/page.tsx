@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWordle, LetterState, GameMode } from '@/hooks/useWordle';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
+import { playTick, playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#22c55e';
 const KEYBOARD_ROWS = [
@@ -21,10 +24,20 @@ function stateColor(state: LetterState | undefined): string {
 export default function WordlePage() {
   const [mode, setMode] = useState<GameMode>('daily');
   const game = useWordle(mode);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevGameOver = useRef(false);
+  useEffect(() => {
+    if (game.gameOver && !prevGameOver.current) {
+      prevGameOver.current = true;
+      if (game.won) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else { haptic.error(); playError(); }
+    }
+    if (!game.gameOver) prevGameOver.current = false;
+  }, [game.gameOver, game.won]);
 
   const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Enter') game.submitGuess();
-    else if (e.key === 'Backspace') game.deleteLetter();
+    if (e.key === 'Enter') { game.submitGuess(); haptic.light(); }
+    else if (e.key === 'Backspace') { game.deleteLetter(); haptic.light(); }
     else if (/^[a-zA-Z]$/.test(e.key)) game.addLetter(e.key.toUpperCase());
   }, [game]);
 
@@ -42,7 +55,9 @@ export default function WordlePage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #22c55e11 0%, transparent 60%)', maxWidth: 480, margin: '0 auto' }}>
+<>
+      <ConfettiOverlay active={showConfetti} />
+      <div className="min-h-dvh flex flex-col" style={{ background: 'radial-gradient(ellipse at center top, #22c55e11 0%, transparent 60%)', maxWidth: 480, margin: '0 auto' }}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
         <Link href="/" className="text-2xl">←</Link>
@@ -158,9 +173,9 @@ export default function WordlePage() {
                 <button
                   key={key}
                   onClick={() => {
-                    if (key === 'ENTER') game.submitGuess();
-                    else if (key === '⌫') game.deleteLetter();
-                    else game.addLetter(key);
+                    if (key === 'ENTER') { game.submitGuess(); haptic.light(); }
+                    else if (key === '⌫') { game.deleteLetter(); haptic.light(); }
+                    else { game.addLetter(key); haptic.light(); playTick(); }
                   }}
                   className="flex items-center justify-center font-bold rounded-lg select-none active:opacity-70 transition-opacity"
                   style={{
@@ -180,5 +195,6 @@ export default function WordlePage() {
         ))}
       </div>
     </div>
+    </>
   );
 }

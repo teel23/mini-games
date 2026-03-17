@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDotsBoxes, DBMode, DBDifficulty, DBSize } from '@/hooks/useDotsBoxes';
 import Link from 'next/link';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
+import { haptic } from '@/lib/haptics';
+import { playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#8b5cf6';
 const P1_COLOR = '#60a5fa';
@@ -10,12 +13,24 @@ const P2_COLOR = '#f97316';
 
 export default function DotsBoxesPage() {
   const game = useDotsBoxes();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevGameOver = useRef(false);
+  useEffect(() => {
+    if (game.gameOver && !prevGameOver.current) {
+      prevGameOver.current = true;
+      const humanWon = game.scores[0] > game.scores[1];
+      if (humanWon) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      else { haptic.error(); playError(); }
+    }
+    if (!game.gameOver) prevGameOver.current = false;
+  }, [game.gameOver, game.scores]);
 
-  if (!game.started) {
-    return <Setup game={game} />;
-  }
-
-  return <GameView game={game} />;
+  return (
+    <>
+      <ConfettiOverlay active={showConfetti} />
+      {!game.started ? <Setup game={game} /> : <GameView game={game} />}
+    </>
+  );
 }
 
 function Setup({ game }: { game: ReturnType<typeof useDotsBoxes> }) {

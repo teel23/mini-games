@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChess, ChessMode, ChessDifficulty, pieceSymbol } from '@/hooks/useChess';
+import ConfettiOverlay from '@/components/ConfettiOverlay';
 import Link from 'next/link';
+import { haptic } from '@/lib/haptics';
+import { playTick, playWin, playError } from '@/lib/sounds';
 
 const ACCENT = '#f59e0b';
 
@@ -61,17 +64,51 @@ function Setup({ game }: { game: ReturnType<typeof useChess> }) {
 
 function GameView({ game }: { game: ReturnType<typeof useChess> }) {
   const cellSize = Math.min(Math.floor(360 / 8), 44);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [shakingBoard, setShakingBoard] = useState(false);
+  const prevGameOver = useRef(false);
+
+  useEffect(() => {
+    if (game.gameOver && !prevGameOver.current) {
+      prevGameOver.current = true;
+      const humanWon = game.result === 'checkmate' && game.winner === 'white';
+      if (humanWon) {
+        setShowConfetti(true);
+        haptic.win();
+        playWin();
+        setTimeout(() => setShowConfetti(false), 2100);
+      } else if (game.result === 'checkmate') {
+        setShakingBoard(true);
+        haptic.error();
+        playError();
+        setTimeout(() => setShakingBoard(false), 500);
+      }
+    }
+    if (!game.gameOver) prevGameOver.current = false;
+  }, [game.gameOver, game.result, game.winner]);
 
   const turnLabel = game.gameOver
     ? ''
     : game.aiThinking
-    ? 'AI thinking...'
+    ? 'Thinking...'
     : game.mode === 'pvp'
     ? `${game.currentPlayer}'s turn`
     : game.currentPlayer === 'white' ? 'Your turn' : '';
 
+  const handleCellClick = (idx: number) => {
+    const prevSelected = game.selected;
+    game.handleCellClick(idx);
+    if (prevSelected !== null && game.validTargets.has(idx)) {
+      haptic.light();
+      playTick();
+    } else if (game.board[idx]) {
+      haptic.light();
+    }
+  };
+
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
+      <ConfettiOverlay active={showConfetti} />
       <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
         <button onClick={() => game.setStarted(false)} className="text-2xl">←</button>
         <span className="font-bold text-white text-lg">Chess</span>
@@ -80,31 +117,34 @@ function GameView({ game }: { game: ReturnType<typeof useChess> }) {
         </span>
       </div>
 
-      {/* Captured pieces - black's captures */}
       <div className="px-4 pt-2 flex gap-0.5 flex-wrap min-h-[24px]">
         {game.captured.white.map((p, i) => (
           <span key={i} style={{ fontSize: 16 }}>{pieceSymbol(p)}</span>
         ))}
       </div>
 
-      {/* Turn / Check indicator */}
       {!game.gameOver && (
         <div className="text-center py-1">
           <span className="text-sm font-semibold" style={{ color: game.inCheck ? '#ef4444' : ACCENT }}>
             {game.inCheck ? 'Check!' : turnLabel}
           </span>
+          {game.aiThinking && (
+            <span className="ml-2 text-xs" style={{ color: '#555' }}>●●●</span>
+          )}
         </div>
       )}
 
-      {/* Board */}
       <div className="flex-1 flex items-center justify-center px-4">
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(8, ${cellSize}px)`,
-          border: '2px solid #444',
-          borderRadius: 4,
-          overflow: 'hidden',
-        }}>
+        <div
+          className={shakingBoard ? 'animate-shake' : ''}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(8, ${cellSize}px)`,
+            border: '2px solid #444',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}
+        >
           {Array.from({ length: 64 }, (_, idx) => {
             const r = Math.floor(idx / 8);
             const c = idx % 8;
@@ -117,7 +157,7 @@ function GameView({ game }: { game: ReturnType<typeof useChess> }) {
             return (
               <div
                 key={idx}
-                onClick={() => game.handleCellClick(idx)}
+                onClick={() => handleCellClick(idx)}
                 className="flex items-center justify-center cursor-pointer select-none"
                 style={{
                   width: cellSize,
@@ -129,12 +169,7 @@ function GameView({ game }: { game: ReturnType<typeof useChess> }) {
               >
                 {piece && pieceSymbol(piece)}
                 {!piece && isValidTarget && (
-                  <div style={{
-                    width: cellSize * 0.25,
-                    height: cellSize * 0.25,
-                    borderRadius: '50%',
-                    background: '#22c55e88',
-                  }} />
+                  <div style={{ width: cellSize * 0.25, height: cellSize * 0.25, borderRadius: '50%', background: '#22c55e88' }} />
                 )}
               </div>
             );
@@ -142,14 +177,12 @@ function GameView({ game }: { game: ReturnType<typeof useChess> }) {
         </div>
       </div>
 
-      {/* Captured pieces - white's captures */}
       <div className="px-4 pb-2 flex gap-0.5 flex-wrap min-h-[24px]">
         {game.captured.black.map((p, i) => (
           <span key={i} style={{ fontSize: 16 }}>{pieceSymbol(p)}</span>
         ))}
       </div>
 
-      {/* Game over */}
       {game.gameOver && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="rounded-2xl p-6 flex flex-col items-center gap-4 w-72" style={{ background: '#1a1a1a', border: '1px solid #2e2e2e' }}>
