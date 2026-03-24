@@ -44,6 +44,7 @@ function Setup({ onStart }: { onStart: (mode: DrawMode) => void }) {
                     background: mode === m ? ACCENT : '#1a1a1a',
                     color: mode === m ? '#fff' : '#f0f0f0',
                     border: `1px solid ${mode === m ? ACCENT : '#2e2e2e'}`,
+                    minHeight: 44,
                   }}
                 >
                   Draw {m}
@@ -51,7 +52,7 @@ function Setup({ onStart }: { onStart: (mode: DrawMode) => void }) {
               ))}
             </div>
           </div>
-          <button onClick={() => onStart(mode)} className="w-full py-4 rounded-xl font-bold text-white" style={{ background: ACCENT }}>
+          <button onClick={() => onStart(mode)} className="w-full py-4 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
             Deal Cards
           </button>
         </div>
@@ -127,10 +128,37 @@ interface DragState {
   pointerId: number;
 }
 
+interface PendingDrag {
+  sourceKey: string;
+  cards: Card[];
+  startX: number;
+  startY: number;
+  pointerId: number;
+}
+
 function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) {
   const game = useSolitaire(drawMode);
   const { state, selected } = game;
-  const [drag, setDrag] = useState<DragState | null>(null);
+
+  // Use both state (for rendering) and a ref (for synchronous handler access).
+  // This avoids the React race condition where onPointerUp fires before the
+  // re-render caused by onPointerDown's setDrag() call, leaving the parent
+  // handler as `undefined` and swallowing the drag-end event.
+  const [drag, _setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const setDrag = (value: DragState | null) => {
+    dragRef.current = value;
+    _setDrag(value);
+  };
+
+  // Pending drag: touch started but hasn't moved past the threshold yet.
+  // Stored as a ref so it's available synchronously in pointer handlers.
+  const pendingDragRef = useRef<PendingDrag | null>(null);
+
+  // Set to true after a real drag ends so that the subsequent onClick
+  // synthetic event doesn't double-fire the move logic.
+  const dragEndedRef = useRef(false);
+
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const prevWon = useRef(false);
@@ -148,37 +176,78 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
   const isTableauSelected = (col: number, idx: number) =>
     selected?.source === 'tableau' && selected.col === col && selected.cardIdx !== undefined && idx >= selected.cardIdx;
 
-  // Drag helpers
-  const startDrag = useCallback((sourceKey: string, cards: Card[], x: number, y: number, pointerId: number) => {
-    setDrag({ cards, sourceKey, x, y, pointerId });
-    haptic.light();
+  // Record drag intent without touching React state. Also captures the
+  // pointer on the element so we keep receiving pointer events if the
+  // finger slides off the source element before the threshold is reached.
+  const prepareDrag = useCallback((
+    sourceKey: string,
+    cards: Card[],
+    x: number,
+    y: number,
+    pointerId: number,
+    el: Element,
+  ) => {
+    pendingDragRef.current = { sourceKey, cards, startX: x, startY: y, pointerId };
+    try { (el as HTMLElement).setPointerCapture(pointerId); } catch (_) {}
   }, []);
 
+  // Always registered — reads from refs to avoid stale closure issues.
   const handleDragMove = useCallback((x: number, y: number) => {
-    if (!drag) return;
-    setDrag(d => d ? { ...d, x, y } : null);
-    // Find element under pointer
-    const el = document.elementFromPoint(x, y);
-    const pile = el?.closest('[data-pile]')?.getAttribute('data-pile') ?? null;
-    setDragOver(pile);
-  }, [drag]);
+    const pending = pendingDragRef.current;
+    const current = dragRef.current;
 
+    if (pending && !current) {
+      const dx = Math.abs(x - pending.startX);
+      const dy = Math.abs(y - pending.startY);
+      if (dx > 6 || dy > 6) {
+        // Crossed threshold — begin the visual drag
+        const newDrag: DragState = {
+          cards: pending.cards,
+          sourceKey: pending.sourceKey,
+          x, y,
+          pointerId: pending.pointerId,
+        };
+        pendingDragRef.current = null;
+        dragRef.current = newDrag;
+        _setDrag(newDrag);
+        haptic.light();
+      }
+      return;
+    }
+
+    if (current) {
+      const updated = { ...current, x, y };
+      dragRef.current = updated;
+      _setDrag(updated);
+      const el = document.elementFromPoint(x, y);
+      const pile = el?.closest('[data-pile]')?.getAttribute('data-pile') ?? null;
+      setDragOver(pile);
+    }
+  }, []);
+
+  // Always registered — reads dragRef.current synchronously, so it works
+  // even when called from onPointerUp before React has re-rendered.
   const handleDragEnd = useCallback((x: number, y: number) => {
-    if (!drag) return;
+    pendingDragRef.current = null;
+    const currentDrag = dragRef.current;
+    if (!currentDrag) return;
+
+    // Suppress the onClick that fires right after onPointerUp
+    dragEndedRef.current = true;
+    setTimeout(() => { dragEndedRef.current = false; }, 50);
+
     const el = document.elementFromPoint(x, y);
     const pileKey = el?.closest('[data-pile]')?.getAttribute('data-pile') ?? null;
 
     if (pileKey) {
-      // Select source first
-      if (drag.sourceKey === 'waste') {
+      if (currentDrag.sourceKey === 'waste') {
         game.selectWaste();
       } else {
-        const col = parseInt(drag.sourceKey.split('-')[1]);
+        const col = parseInt(currentDrag.sourceKey.split('-')[1]);
         const pile = state.tableau[col];
-        const cardIdx = pile.length - drag.cards.length;
+        const cardIdx = pile.length - currentDrag.cards.length;
         game.selectTableauCard(col, cardIdx);
       }
-      // Then move
       if (pileKey.startsWith('foundation-')) {
         const fi = parseInt(pileKey.split('-')[1]);
         game.moveToFoundation(fi);
@@ -188,26 +257,32 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
         haptic.light();
         playTick();
       }
-    } else {
-      // No target — fall back to tap select
-      if (drag.sourceKey === 'waste') {
-        game.selectWaste();
-      }
     }
 
-    setDrag(null);
+    dragRef.current = null;
+    _setDrag(null);
     setDragOver(null);
-  }, [drag, game, state.tableau]);
+  }, [game, state.tableau]);
+
+  const handleDragCancel = useCallback(() => {
+    pendingDragRef.current = null;
+    dragRef.current = null;
+    _setDrag(null);
+    setDragOver(null);
+  }, []);
 
   const handleFoundationClick = (fi: number) => {
+    if (dragEndedRef.current) return;
     if (selected) { game.moveToFoundation(fi); haptic.light(); playTick(); }
   };
 
   const handleTableauPileClick = (col: number) => {
+    if (dragEndedRef.current) return;
     if (selected) { game.moveToTableau(col); haptic.light(); playTick(); }
   };
 
   const handleTableauCardClick = (col: number, cardIdx: number) => {
+    if (dragEndedRef.current) return;
     if (selected && selected.source !== 'tableau') {
       game.moveToTableau(col);
       haptic.light();
@@ -217,17 +292,21 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
     }
   };
 
-  // Card width for drag ghost
   const CARD_W = 52;
   const CARD_H = 74;
 
   return (
     <div
       className="min-h-dvh flex flex-col"
-      style={{ background: 'radial-gradient(ellipse at center top, #10b98111 0%, transparent 60%)', userSelect: 'none' }}
-      onPointerMove={drag ? e => handleDragMove(e.clientX, e.clientY) : undefined}
-      onPointerUp={drag ? e => handleDragEnd(e.clientX, e.clientY) : undefined}
-      onPointerCancel={drag ? () => { setDrag(null); setDragOver(null); } : undefined}
+      style={{
+        background: 'radial-gradient(ellipse at center top, #10b98111 0%, transparent 60%)',
+        userSelect: 'none',
+        // Prevent page scroll while dragging; allow normal pan otherwise
+        touchAction: drag ? 'none' : 'pan-y',
+      }}
+      onPointerMove={e => handleDragMove(e.clientX, e.clientY)}
+      onPointerUp={e => handleDragEnd(e.clientX, e.clientY)}
+      onPointerCancel={handleDragCancel}
     >
       <ConfettiOverlay active={showConfetti} />
       {game.paused && (
@@ -253,10 +332,13 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
             )}
           </div>
           <div
-            onClick={drag ? undefined : game.selectWaste}
-            onPointerDown={state.waste.length > 0 && !drag ? e => {
-              const card = state.waste[state.waste.length - 1];
-              startDrag('waste', [card], e.clientX, e.clientY, e.pointerId);
+            onClick={() => { if (!dragEndedRef.current) game.selectWaste(); }}
+            onPointerDown={state.waste.length > 0 ? e => {
+              prepareDrag(
+                'waste',
+                [state.waste[state.waste.length - 1]],
+                e.clientX, e.clientY, e.pointerId, e.currentTarget,
+              );
             } : undefined}
             className="cursor-pointer"
           >
@@ -309,11 +391,15 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
                           style={{ top: cardIdx * 20, zIndex: cardIdx }}
                           onClick={e => { e.stopPropagation(); handleTableauCardClick(col, cardIdx); }}
                           onDoubleClick={() => { game.selectTableauCard(col, cardIdx); game.moveToFoundation(0); }}
-                          onPointerDown={card.faceUp && !drag ? e => {
+                          onPointerDown={card.faceUp ? e => {
                             e.stopPropagation();
                             const dragCards = pile.slice(cardIdx);
                             if (dragCards.every(c => c.faceUp)) {
-                              startDrag(`tableau-${col}`, dragCards, e.clientX, e.clientY, e.pointerId);
+                              prepareDrag(
+                                `tableau-${col}`,
+                                dragCards,
+                                e.clientX, e.clientY, e.pointerId, e.currentTarget,
+                              );
                             }
                           } : undefined}
                         >
@@ -367,7 +453,7 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
           <div className="rounded-2xl p-6 flex flex-col items-center gap-4 w-72" style={{ background: '#1a1a1a', border: '1px solid #2e2e2e' }}>
             <h2 className="text-2xl font-bold text-white">You Win! 🎉</h2>
             <p className="text-sm" style={{ color: '#888' }}>Total wins: {game.gamesWon}</p>
-            <button onClick={game.restart} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: ACCENT }}>
+            <button onClick={game.restart} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
               Deal Again
             </button>
             <Link href="/" className="text-sm" style={{ color: '#888' }}>Home</Link>
@@ -377,4 +463,3 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
     </div>
   );
 }
-

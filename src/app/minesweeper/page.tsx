@@ -104,7 +104,7 @@ export default function MinesweeperPage() {
               key={d}
               onClick={() => { setDifficulty(d); game.restart(); }}
               className="flex-1 py-2 text-xs font-semibold capitalize transition-all"
-              style={{ background: difficulty === d ? ACCENT : '#1a1a1a', color: difficulty === d ? '#fff' : '#888' }}
+              style={{ background: difficulty === d ? ACCENT : '#1a1a1a', color: difficulty === d ? '#fff' : '#888', minHeight: 44 }}
             >
               {d}
             </button>
@@ -116,7 +116,7 @@ export default function MinesweeperPage() {
               key={m}
               onClick={() => { setMode(m); game.restart(); }}
               className="px-3 py-2 text-xs font-semibold capitalize transition-all"
-              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#fff' : '#888' }}
+              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#fff' : '#888', minHeight: 44 }}
             >
               {m}
             </button>

@@ -108,7 +108,7 @@ function GameView({ game }: { game: ReturnType<typeof useDotsBoxes> }) {
   // Calculate cell size based on grid size to fit on mobile
   const maxBoardWidth = 340;
   const cellSize = Math.min(Math.floor(maxBoardWidth / cols), 60);
-  const hitArea = 20; // Extra padding for touch
+  const hitArea = 36; // Extra padding for touch — brings hit target to 42px total
 
   const turnLabel = game.mode === 'pvp'
     ? `Player ${game.currentPlayer}'s turn`
@@ -150,7 +150,7 @@ function GameView({ game }: { game: ReturnType<typeof useDotsBoxes> }) {
 
       {/* Board */}
       <div className="flex-1 flex items-center justify-center px-4">
-        <div style={{ position: 'relative', width: cols * cellSize + dotSize, height: rows * cellSize + dotSize }}>
+        <div style={{ position: 'relative', width: cols * cellSize + dotSize, height: rows * cellSize + dotSize, touchAction: 'manipulation' }}>
           {/* Boxes */}
           {Array.from({ length: rows }, (_, r) =>
             Array.from({ length: cols }, (_, c) => {

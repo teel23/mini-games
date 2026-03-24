@@ -73,7 +73,7 @@ export default function Game2048() {
               key={m}
               onClick={() => { setBoardMode(m); restart(); }}
               className="px-3 py-2 text-sm font-semibold transition-all"
-              style={{ background: boardMode === m ? ACCENT : '#1a1a1a', color: boardMode === m ? '#000' : '#888' }}
+              style={{ background: boardMode === m ? ACCENT : '#1a1a1a', color: boardMode === m ? '#000' : '#888', minHeight: 44 }}
             >
               {m}
             </button>
@@ -85,6 +85,7 @@ export default function Game2048() {
         className="flex-1 flex items-center justify-center p-4"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        style={{ touchAction: 'none' }}
       >
         <div
           className="rounded-2xl p-2 w-full"

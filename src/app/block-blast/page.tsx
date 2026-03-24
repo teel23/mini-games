@@ -143,6 +143,7 @@ export default function BlockBlastPage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: isSelected ? `0 0 12px ${piece.color}66` : 'none',
                 transition: 'box-shadow 0.15s, border-color 0.15s',
+                touchAction: 'manipulation',
               }}
             >
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${maxC + 1}, 16px)`, gap: 2 }}>

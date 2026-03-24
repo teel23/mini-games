@@ -60,7 +60,7 @@ export default function SudokuPage() {
               key={d}
               onClick={() => setDifficulty(d)}
               className="flex-1 py-2 text-xs font-semibold capitalize"
-              style={{ background: difficulty === d ? ACCENT : '#1a1a1a', color: difficulty === d ? '#fff' : '#888' }}
+              style={{ background: difficulty === d ? ACCENT : '#1a1a1a', color: difficulty === d ? '#fff' : '#888', minHeight: 44 }}
             >
               {d === 'expert' ? 'X' : d[0].toUpperCase()}
             </button>
@@ -72,7 +72,7 @@ export default function SudokuPage() {
               key={m}
               onClick={() => setMode(m)}
               className="px-3 py-2 text-xs font-semibold capitalize"
-              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#fff' : '#888' }}
+              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#fff' : '#888', minHeight: 44 }}
             >
               {m === 'daily' ? '📅' : '🎲'}
             </button>
@@ -107,6 +107,7 @@ export default function SudokuPage() {
             overflow: 'hidden',
             width: '100%',
             maxWidth: 380,
+            touchAction: 'manipulation',
           }}
         >
           {game.userGrid.map((row, r) =>

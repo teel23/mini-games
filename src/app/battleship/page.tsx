@@ -138,14 +138,14 @@ function ShipPlacement({ game }: { game: ReturnType<typeof useBattleship> }) {
             Ship {game.placingShipIdx + 1}/{game.shipLengths.length} (length {currentShipLen})
             {' · '}
           </span>
-          <button onClick={game.toggleHorizontal} className="text-sm font-semibold" style={{ color: ACCENT }}>
+          <button onClick={game.toggleHorizontal} className="text-sm font-semibold px-4 py-2 rounded-xl" style={{ color: ACCENT, background: ACCENT + '22', minHeight: 44 }}>
             {game.horizontal ? 'Horizontal ↔' : 'Vertical ↕'}
           </button>
         </div>
       )}
 
       <div className="flex justify-center px-4 py-4">
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${game.size}, ${cellSize}px)`, gap: 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${game.size}, ${cellSize}px)`, gap: 2, touchAction: 'manipulation' }}>
           {game.setupGrid.map((row, r) =>
             row.map((cell, c) => (
               <div key={`${r}-${c}`}
@@ -155,6 +155,7 @@ function ShipPlacement({ game }: { game: ReturnType<typeof useBattleship> }) {
                   width: cellSize, height: cellSize,
                   background: cell === 'ship' ? '#3b82f6' : '#1a1a1a',
                   border: '1px solid #2e2e2e',
+                  touchAction: 'manipulation',
                 }}>
               </div>
             ))
@@ -210,6 +211,7 @@ function BattleView({ game }: { game: ReturnType<typeof useBattleship> }) {
                     border: '1px solid #2e2e2e',
                     fontSize: cellSize < 28 ? 10 : 14,
                     color: cell === 'hit' || cell === 'sunk' ? '#fff' : '#666',
+                    touchAction: 'manipulation',
                   }}>
                   {cellContent(cell)}
                 </div>

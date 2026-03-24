@@ -68,7 +68,7 @@ export default function WordlePage() {
               key={m}
               onClick={() => setMode(m)}
               className="px-3 py-1.5 text-xs font-semibold transition-all capitalize"
-              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#000' : '#888' }}
+              style={{ background: mode === m ? ACCENT : '#1a1a1a', color: mode === m ? '#000' : '#888', minHeight: 44 }}
             >
               {m}
             </button>
