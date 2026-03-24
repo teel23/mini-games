@@ -351,10 +351,15 @@ function getAIMove(board: Board, difficulty: ChessDifficulty, enPassant: number 
   if (moves.length === 0) return null;
 
   if (difficulty === 'easy') {
+    // Occasionally prefer captures so easy isn't pure random, but still very beatable
+    const captures = moves.filter(m => board[m.to] !== null || m.enPassant !== undefined);
+    if (captures.length > 0 && Math.random() < 0.4) {
+      return captures[Math.floor(Math.random() * captures.length)];
+    }
     return moves[Math.floor(Math.random() * moves.length)];
   }
 
-  const depth = difficulty === 'hard' ? 4 : 3;
+  const depth = difficulty === 'hard' ? 5 : 3;
   const deadline = Date.now() + 2000; // 2s max
   let bestMove = moves[0];
   let bestVal = -Infinity;
@@ -512,7 +517,8 @@ export function useChess() {
       setAiThinking(false);
     }, 500);
     return () => clearTimeout(timer);
-  }, [mode, currentPlayer, gameOver, aiThinking, board, difficulty, enPassantTarget]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentPlayer, gameOver, board, difficulty, enPassantTarget]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty);

@@ -228,7 +228,8 @@ export function useDotsBoxes() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [mode, currentPlayer, gameOver, aiThinking, claimedLines, lineOwner, boxOwner, scores, rows, cols, totalBoxes, difficulty]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentPlayer, gameOver, claimedLines, lineOwner, boxOwner, scores, rows, cols, totalBoxes, difficulty]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty, size);

@@ -81,7 +81,7 @@ function getRandomMove(board: Board): number {
 }
 
 function getMediumMove(board: Board): number {
-  return Math.random() < 0.5 ? getBestMove(board) : getRandomMove(board);
+  return Math.random() < 0.65 ? getBestMove(board) : getRandomMove(board);
 }
 
 export function useTicTacToe(mode: Mode, difficulty: Difficulty) {

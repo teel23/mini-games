@@ -259,18 +259,41 @@ export function useBattleship() {
           c = Math.floor(Math.random() * size);
         } while (newFired.has(`${r}-${c}`));
       } else {
-        // Hunt/target
+        // Medium / Hard hunt+target
         if (aiHits.length > 0) {
-          // Target adjacent to hits
           const candidates: [number, number][] = [];
-          for (const [hr, hc] of aiHits) {
-            for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-              const nr = hr + dr, nc = hc + dc;
-              if (nr >= 0 && nr < size && nc >= 0 && nc < size && !newFired.has(`${nr}-${nc}`)) {
-                candidates.push([nr, nc]);
+
+          // Hard: when 2+ hits are collinear, lock onto that axis
+          if (difficulty === 'hard' && aiHits.length >= 2) {
+            const hitRows = aiHits.map(h => h[0]);
+            const hitCols = aiHits.map(h => h[1]);
+            const sameRow = hitRows.every(hr => hr === hitRows[0]);
+            const sameCol = hitCols.every(hc => hc === hitCols[0]);
+            if (sameRow) {
+              const hr = hitRows[0];
+              const minC = Math.min(...hitCols), maxC = Math.max(...hitCols);
+              if (minC > 0 && !newFired.has(`${hr}-${minC - 1}`)) candidates.push([hr, minC - 1]);
+              if (maxC < size - 1 && !newFired.has(`${hr}-${maxC + 1}`)) candidates.push([hr, maxC + 1]);
+            } else if (sameCol) {
+              const hc = hitCols[0];
+              const minR = Math.min(...hitRows), maxR = Math.max(...hitRows);
+              if (minR > 0 && !newFired.has(`${minR - 1}-${hc}`)) candidates.push([minR - 1, hc]);
+              if (maxR < size - 1 && !newFired.has(`${maxR + 1}-${hc}`)) candidates.push([maxR + 1, hc]);
+            }
+          }
+
+          // Fallback: target any cell adjacent to a hit
+          if (candidates.length === 0) {
+            for (const [hr, hc] of aiHits) {
+              for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+                const nr = hr + dr, nc = hc + dc;
+                if (nr >= 0 && nr < size && nc >= 0 && nc < size && !newFired.has(`${nr}-${nc}`)) {
+                  candidates.push([nr, nc]);
+                }
               }
             }
           }
+
           if (candidates.length > 0) {
             const pick = candidates[Math.floor(Math.random() * candidates.length)];
             r = pick[0]; c = pick[1];
@@ -281,7 +304,7 @@ export function useBattleship() {
             } while (newFired.has(`${r}-${c}`));
           }
         } else {
-          // Random with checkerboard pattern for hard
+          // Hunt phase: hard uses checkerboard, medium uses random
           if (difficulty === 'hard') {
             const candidates: [number, number][] = [];
             for (let i = 0; i < size; i++)
@@ -344,7 +367,8 @@ export function useBattleship() {
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [mode, currentTurn, phase, winner, aiThinking, difficulty, size, aiFired, aiHits, playerBoard, playerView]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentTurn, phase, winner, difficulty, size, aiFired, aiHits, playerBoard, playerView]);
 
   const restart = useCallback(() => {
     if (mode) init(mode, difficulty, boardSize);

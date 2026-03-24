@@ -193,7 +193,7 @@ function getAIMove(board: Board, difficulty: CKDifficulty): Move | null {
     return moves[Math.floor(Math.random() * moves.length)];
   }
 
-  const depth = difficulty === 'hard' ? 6 : 3;
+  const depth = difficulty === 'hard' ? 4 : 3;
   let bestMove = moves[0];
   let bestVal = -Infinity;
   for (const m of moves) {
@@ -298,7 +298,8 @@ export function useCheckers() {
       setAiThinking(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [mode, currentPlayer, gameOver, aiThinking, board, difficulty]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentPlayer, gameOver, board, difficulty]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty);
