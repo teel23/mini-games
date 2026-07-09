@@ -1,11 +1,11 @@
 # Mini Games — Project Notes
 > Reference for jumping back into this project.
-> Last updated: March 16, 2026 (Full polish sprint — deployed live)
+> Last updated: July 8, 2026 (stats page; Jun 24 20-game sprint finally committed + deployed)
 
 ---
 
 ## What It Is
-A collection of 13 browser-based mini games. Playful colorful design, phone-first, no accounts. All scores and streaks stored in `localStorage`. No Supabase — local only for phase 1.
+A collection of 20 browser-based mini games. Playful colorful design, phone-first, no accounts. All scores and streaks stored in `localStorage`. No Supabase — local only for phase 1. Installable PWA with offline support (service worker).
 
 ## Live URL
 🌐 **https://games.c2tbuilds.com** ✅ Live on Vercel
@@ -25,7 +25,7 @@ Next.js 16 · TypeScript · Tailwind CSS · localStorage · Vercel
 
 ## Status
 ✅ **Live at games.c2tbuilds.com** — Vercel auto-deploys on push to `main`
-✅ **Portfolio card** — screenshot added (`mini-games-real.png`), description updated to "13 games"
+✅ **Portfolio card** — screenshot `mini-games-real.png`, description updated to "20 games" (Jul 8)
 
 ---
 
@@ -123,11 +123,13 @@ cd /tmp/mini-games-build && npm install && npm run build
 | Mar 16, 2026 | **Full polish sprint** — haptics, Web Audio sounds, ConfettiOverlay, SwipeBack, PWA manifest, 2048 tile animations, Solitaire pointer drag-and-drop, Block Blast touch drag via elementFromPoint, Water Sort pour drip, Chess 2s AI deadline guard, per-game win/lose effects. Sound toggle on home page. Home page stats for all 13 games. |
 | Mar 16, 2026 | Connected to Vercel ✅ — games.c2tbuilds.com live |
 | Mar 16, 2026 | Portfolio updated — screenshot `mini-games-real.png` added, description updated to "13 games" |
+| Jun 24, 2026 | **Audit + fix + expand sprint.** Fixed daily/streak engine (local-day rollover, real streak breaks, daily replay locks for Wordle/Minesweeper/Sudoku/Nonogram/Lights Out/Grouping). Added service worker + offline; PNG/maskable icons; iOS safe-area (viewport-fit=cover); self-hosted font via next/font. Fixed PVP Battleship deadlock; wired wins for Chess/Checkers/Battleship/Dots&Boxes; Solitaire timer+undo; Sudoku unique-solution generation + mistake cap + undo; Water Sort solvable-only generation; Chess AI depth/deadline tuned; pause now stops timers. **7 new games:** Nonogram, Lights Out, Grouping, Snake, Memory Match, Mahjong, Flow → **20 total.** Full `next build` green (24 routes). See AUDIT_REPORT.md / FIXES.md / NEW_GAMES.md. |
 | Mar 23, 2026 | **Full mobile/touch audit** — 8 files fixed. Solitaire: rewrote drag-and-drop with drag threshold + dragRef pattern to fix race condition where onPointerUp was unregistered on quick taps, causing card moves to be swallowed; also fixed double-event (onClick + pointer) conflict. 2048: added touch-action:none to swipe area (was scroll-fighting). Battleship: touch-action:manipulation on placement grid + enlarged orientation toggle. Dots & Boxes: hit area 26→42px for line taps. Minesweeper/Sudoku/Wordle: all control buttons now minHeight:44. Block Blast: touch-action:manipulation on piece tray buttons. 0 TS errors. |
 
 ---
 
 ## Open Items
-- [ ] Phase 2: Supabase leaderboards (2048, Wordle, Minesweeper best times)
-- [ ] Phase 2: Wordle share button (copy colored grid to clipboard)
-- [ ] Phase 2: `/stats` page showing all-time records across all 13 games
+- [x] All pre-June-24 items (scaffold, Vercel, domain, screenshots, drag-and-drop, animations) — long since shipped
+- [x] Wordle share button (copy colored grid) — shipped in Jun 24 sprint
+- [x] `/stats` page showing all-time records across all 20 games — added Jul 8, 2026 (📊 icon on home)
+- [ ] Phase 2: Supabase leaderboards (cross-device) — needs its own session

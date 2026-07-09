@@ -60,6 +60,8 @@ export const storage = {
       setItem('minesweeper', `bestTime:${diff}`, t),
     getDailyStreak: () => getItem<number>('minesweeper', 'dailyStreak', 0),
     setDailyStreak: (v: number) => setItem('minesweeper', 'dailyStreak', v),
+    getLastDaily: () => getItem<string>('minesweeper', 'lastDaily', ''),
+    setLastDaily: (v: string) => setItem('minesweeper', 'lastDaily', v),
   },
   sudoku: {
     getBestTime: (diff: 'easy' | 'medium' | 'hard' | 'expert') =>
@@ -68,6 +70,8 @@ export const storage = {
       setItem('sudoku', `bestTime:${diff}`, t),
     getDailyStreak: () => getItem<number>('sudoku', 'dailyStreak', 0),
     setDailyStreak: (v: number) => setItem('sudoku', 'dailyStreak', v),
+    getLastDaily: () => getItem<string>('sudoku', 'lastDaily', ''),
+    setLastDaily: (v: string) => setItem('sudoku', 'lastDaily', v),
   },
   solitaire: {
     getBestTime: () => getItem<number>('solitaire', 'bestTime', Infinity),
@@ -110,5 +114,47 @@ export const storage = {
   chess: {
     getWins: () => getItem<number>('chess', 'wins', 0),
     setWins: (v: number) => setItem('chess', 'wins', v),
+  },
+  nonogram: {
+    getDailyStreak: () => getItem<number>('nonogram', 'dailyStreak', 0),
+    setDailyStreak: (v: number) => setItem('nonogram', 'dailyStreak', v),
+    getBestStreak: () => getItem<number>('nonogram', 'bestStreak', 0),
+    setBestStreak: (v: number) => setItem('nonogram', 'bestStreak', v),
+    getLastDaily: () => getItem<string>('nonogram', 'lastDaily', ''),
+    setLastDaily: (v: string) => setItem('nonogram', 'lastDaily', v),
+  },
+  flow: {
+    getHighestLevel: () => getItem<number>('flow', 'highestLevel', 0),
+    setHighestLevel: (v: number) => setItem('flow', 'highestLevel', v),
+  },
+  grouping: {
+    getDailyStreak: () => getItem<number>('grouping', 'dailyStreak', 0),
+    setDailyStreak: (v: number) => setItem('grouping', 'dailyStreak', v),
+    getBestStreak: () => getItem<number>('grouping', 'bestStreak', 0),
+    setBestStreak: (v: number) => setItem('grouping', 'bestStreak', v),
+    getLastDaily: () => getItem<string>('grouping', 'lastDaily', ''),
+    setLastDaily: (v: string) => setItem('grouping', 'lastDaily', v),
+  },
+  snake: {
+    getBestScore: () => getItem<number>('snake', 'bestScore', 0),
+    setBestScore: (v: number) => setItem('snake', 'bestScore', v),
+  },
+  memory: {
+    getBestMoves: () => getItem<number>('memory', 'bestMoves', Infinity),
+    setBestMoves: (v: number) => setItem('memory', 'bestMoves', v),
+  },
+  lightsout: {
+    getDailyStreak: () => getItem<number>('lightsout', 'dailyStreak', 0),
+    setDailyStreak: (v: number) => setItem('lightsout', 'dailyStreak', v),
+    getBestStreak: () => getItem<number>('lightsout', 'bestStreak', 0),
+    setBestStreak: (v: number) => setItem('lightsout', 'bestStreak', v),
+    getLastDaily: () => getItem<string>('lightsout', 'lastDaily', ''),
+    setLastDaily: (v: string) => setItem('lightsout', 'lastDaily', v),
+  },
+  mahjong: {
+    getGamesWon: () => getItem<number>('mahjong', 'gamesWon', 0),
+    setGamesWon: (v: number) => setItem('mahjong', 'gamesWon', v),
+    getBestTime: () => getItem<number>('mahjong', 'bestTime', Infinity),
+    setBestTime: (v: number) => setItem('mahjong', 'bestTime', v),
   },
 };

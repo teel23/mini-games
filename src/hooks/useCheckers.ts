@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { storage } from '@/lib/storage';
 
 export type CKMode = 'ai' | 'pvp';
 export type CKDifficulty = 'easy' | 'medium' | 'hard';
@@ -300,6 +301,16 @@ export function useCheckers() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentPlayer, gameOver, board, difficulty]);
+
+  // Record a win vs AI once (human plays player 1).
+  const winRecorded = useRef(false);
+  useEffect(() => {
+    if (gameOver && mode === 'ai' && winner === 1 && !winRecorded.current) {
+      winRecorded.current = true;
+      storage.checkers.setWins(storage.checkers.getWins() + 1);
+    }
+    if (!gameOver) winRecorded.current = false;
+  }, [gameOver, mode, winner]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty);

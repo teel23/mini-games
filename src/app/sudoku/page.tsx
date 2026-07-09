@@ -87,7 +87,7 @@ export default function SudokuPage() {
           <div className="text-xs" style={{ color: '#888' }}>Time</div>
         </div>
         <div className="text-center">
-          <div className="font-bold text-white">{game.mistakes}</div>
+          <div className="font-bold text-white">{game.mistakes}/{game.maxMistakes}</div>
           <div className="text-xs" style={{ color: '#888' }}>Mistakes</div>
         </div>
         <div className="text-center">
@@ -166,14 +166,23 @@ export default function SudokuPage() {
               background: game.notesMode ? ACCENT + '33' : '#1a1a1a',
               border: `1px solid ${game.notesMode ? ACCENT : '#2e2e2e'}`,
               color: game.notesMode ? ACCENT : '#888',
+              minHeight: 44,
             }}
           >
             ✏️ Notes {game.notesMode ? 'ON' : 'OFF'}
           </button>
           <button
+            onClick={game.undo}
+            disabled={!game.canUndo}
+            className="flex-1 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', color: game.canUndo ? '#888' : '#444', minHeight: 44 }}
+          >
+            ↩ Undo
+          </button>
+          <button
             onClick={() => game.inputNumber(0)}
             className="flex-1 py-2 rounded-xl text-sm font-semibold"
-            style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', color: '#888' }}
+            style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', color: '#888', minHeight: 44 }}
           >
             Erase
           </button>
@@ -198,8 +207,22 @@ export default function SudokuPage() {
           <div className="rounded-2xl p-6 flex flex-col items-center gap-4 w-72" style={{ background: '#1a1a1a', border: '1px solid #2e2e2e' }}>
             <h2 className="text-2xl font-bold text-white">Solved! 🎉</h2>
             <p className="text-3xl font-bold" style={{ color: ACCENT }}>{formatTime(game.elapsed)}</p>
-            <button onClick={game.restart} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: ACCENT }}>
+            <button onClick={game.restart} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
               New Puzzle
+            </button>
+            <Link href="/" className="text-sm" style={{ color: '#888' }}>Home</Link>
+          </div>
+        </div>
+      )}
+
+      {/* Lose overlay */}
+      {game.lost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="rounded-2xl p-6 flex flex-col items-center gap-4 w-72" style={{ background: '#1a1a1a', border: '1px solid #2e2e2e' }}>
+            <h2 className="text-2xl font-bold text-white">Out of mistakes</h2>
+            <p className="text-sm" style={{ color: '#888' }}>{game.maxMistakes} mistakes reached</p>
+            <button onClick={game.restart} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
+              Try Again
             </button>
             <Link href="/" className="text-sm" style={{ color: '#888' }}>Home</Link>
           </div>

@@ -33,19 +33,24 @@ export default function BattleshipPage() {
   useEffect(() => {
     if (game.winner !== null && prevWinner.current === null) {
       prevWinner.current = game.winner;
-      if (game.winner === 1) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
+      const youWon = game.winner === 1 || game.mode === 'pvp';
+      if (youWon) { setShowConfetti(true); haptic.win(); playWin(); setTimeout(() => setShowConfetti(false), 2100); }
       else { haptic.error(); playError(); }
     }
     if (game.winner === null) prevWinner.current = null;
-  }, [game.winner]);
+  }, [game.winner, game.mode]);
+
+  const setupPass = game.started && game.phase === 'setup' && game.pvpPhase === 'p2pass';
+  const turnPass = game.started && game.phase === 'battle' && game.awaitingPass;
 
   return (
     <>
       <ConfettiOverlay active={showConfetti} />
       {!game.started && <Setup game={game} />}
-      {game.started && game.phase === 'setup' && <ShipPlacement game={game} />}
-      {game.started && game.phase === 'battle' && game.pvpPhase === 'p2pass' && <PassScreen game={game} />}
-      {game.started && game.phase === 'battle' && game.pvpPhase !== 'p2pass' && <BattleView game={game} />}
+      {game.started && game.phase === 'setup' && !setupPass && <ShipPlacement game={game} />}
+      {setupPass && <PassScreen title="Pass to Player 2" subtitle="Player 2 places their ships" onReady={game.confirmP2Pass} />}
+      {turnPass && <PassScreen title={`Pass to Player ${game.passTarget}`} subtitle="Tap when ready to fire" onReady={game.confirmPass} />}
+      {game.started && (game.phase === 'battle' || game.phase === 'gameover') && !turnPass && <BattleView game={game} />}
     </>
   );
 }
@@ -108,12 +113,13 @@ function Setup({ game }: { game: ReturnType<typeof useBattleship> }) {
   );
 }
 
-function PassScreen({ game }: { game: ReturnType<typeof useBattleship> }) {
+function PassScreen({ title, subtitle, onReady }: { title: string; subtitle: string; onReady: () => void }) {
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center" style={{ background: '#0f0f0f' }}>
-      <h2 className="text-xl font-bold text-white mb-4">Pass to Player 2</h2>
-      <p className="text-sm mb-6" style={{ color: '#888' }}>Player 2 needs to place their ships</p>
-      <button onClick={game.confirmP2Pass} className="px-8 py-4 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
+      <div className="text-5xl mb-4">📵</div>
+      <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
+      <p className="text-sm mb-6" style={{ color: '#888' }}>{subtitle}</p>
+      <button onClick={onReady} className="px-8 py-4 rounded-xl font-bold text-white" style={{ background: ACCENT, minHeight: 48 }}>
         Ready
       </button>
     </div>
@@ -176,6 +182,11 @@ function BattleView({ game }: { game: ReturnType<typeof useBattleship> }) {
   const cellSize = Math.min(Math.floor(340 / game.size), 34);
   const isGameOver = game.phase === 'gameover';
 
+  let turnLabel: string;
+  if (game.aiThinking) turnLabel = 'AI firing...';
+  else if (game.mode === 'pvp') turnLabel = `Player ${game.viewer} — tap to fire`;
+  else turnLabel = 'Tap to fire';
+
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: '#0f0f0f' }}>
       <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#2e2e2e' }}>
@@ -184,23 +195,20 @@ function BattleView({ game }: { game: ReturnType<typeof useBattleship> }) {
         <span className="text-sm" style={{ color: '#888' }}>{game.size}x{game.size}</span>
       </div>
 
-      {/* Turn indicator */}
       {!isGameOver && (
         <div className="text-center py-2">
-          <span className="text-sm font-semibold" style={{ color: ACCENT }}>
-            {game.aiThinking ? 'AI firing...' : game.currentTurn === 1 ? 'Tap to fire' : 'Opponent\'s turn'}
-          </span>
+          <span className="text-sm font-semibold" style={{ color: ACCENT }}>{turnLabel}</span>
         </div>
       )}
 
-      {/* Opponent's board (where you fire) */}
+      {/* Board you fire at */}
       <div className="px-4 mb-2">
         <p className="text-xs mb-1 font-semibold" style={{ color: '#888' }}>
           {game.mode === 'pvp' ? 'Opponent' : 'Enemy Waters'}
         </p>
         <div className="flex justify-center">
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${game.size}, ${cellSize}px)`, gap: 1 }}>
-            {game.opponentView.map((row, r) =>
+            {game.fireView.map((row, r) =>
               row.map((cell, c) => (
                 <div key={`o-${r}-${c}`}
                   onClick={() => game.fireAt(r, c)}
@@ -221,35 +229,30 @@ function BattleView({ game }: { game: ReturnType<typeof useBattleship> }) {
         </div>
       </div>
 
-      {/* Your board */}
+      {/* Your own fleet */}
       <div className="px-4">
         <p className="text-xs mb-1 font-semibold" style={{ color: '#888' }}>Your Fleet</p>
         <div className="flex justify-center">
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${game.size}, ${cellSize}px)`, gap: 1 }}>
-            {game.playerBoard.grid.map((row, r) =>
-              row.map((cell, c) => {
-                const viewState = game.playerView[r]?.[c];
-                const displayState = viewState === 'hit' || viewState === 'miss' || viewState === 'sunk' ? viewState : cell;
-                return (
-                  <div key={`p-${r}-${c}`}
-                    className="flex items-center justify-center rounded-sm select-none font-bold"
-                    style={{
-                      width: cellSize, height: cellSize,
-                      background: cellColor(displayState, true),
-                      border: '1px solid #2e2e2e',
-                      fontSize: cellSize < 28 ? 10 : 14,
-                      color: displayState === 'hit' || displayState === 'sunk' ? '#fff' : '#666',
-                    }}>
-                    {cellContent(displayState)}
-                  </div>
-                );
-              })
+            {game.ownDisplay.map((row, r) =>
+              row.map((cell, c) => (
+                <div key={`p-${r}-${c}`}
+                  className="flex items-center justify-center rounded-sm select-none font-bold"
+                  style={{
+                    width: cellSize, height: cellSize,
+                    background: cellColor(cell, true),
+                    border: '1px solid #2e2e2e',
+                    fontSize: cellSize < 28 ? 10 : 14,
+                    color: cell === 'hit' || cell === 'sunk' ? '#fff' : '#666',
+                  }}>
+                  {cellContent(cell)}
+                </div>
+              ))
             )}
           </div>
         </div>
       </div>
 
-      {/* Game over */}
       {isGameOver && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="rounded-2xl p-6 flex flex-col items-center gap-4 w-72" style={{ background: '#1a1a1a', border: '1px solid #2e2e2e' }}>

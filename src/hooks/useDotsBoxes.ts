@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { storage } from '@/lib/storage';
 
 export type DBMode = 'ai' | 'pvp';
 export type DBDifficulty = 'easy' | 'medium' | 'hard';
@@ -230,6 +231,16 @@ export function useDotsBoxes() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentPlayer, gameOver, claimedLines, lineOwner, boxOwner, scores, rows, cols, totalBoxes, difficulty]);
+
+  // Record a win vs AI once (human plays player 1).
+  const winRecorded = useRef(false);
+  useEffect(() => {
+    if (gameOver && mode === 'ai' && scores[0] > scores[1] && !winRecorded.current) {
+      winRecorded.current = true;
+      storage.dotsboxes.setWins(storage.dotsboxes.getWins() + 1);
+    }
+    if (!gameOver) winRecorded.current = false;
+  }, [gameOver, mode, scores]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty, size);

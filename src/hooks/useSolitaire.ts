@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { storage } from '@/lib/storage';
 
 export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
@@ -97,11 +97,40 @@ export function useSolitaire(drawMode: DrawMode = 1) {
   const [paused, setPaused] = useState(false);
   const [bestTime, setBestTime] = useState(() => storage.solitaire.getBestTime());
   const [gamesWon, setGamesWon] = useState(() => storage.solitaire.getGamesWon());
-  const startTime = useCallback(() => Date.now(), []);
-  const startRef = { current: Date.now() };
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef<number>(Date.now());
+  const historyRef = useRef<GameState[]>([]);
+  const [histLen, setHistLen] = useState(0);
+
+  // Ticking timer — runs until the game is won or paused.
+  useEffect(() => {
+    if (state.won || paused) return;
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [state.won, paused]);
+
+  // Apply a board mutation, recording the prior state for undo if it changed.
+  const apply = useCallback((mutator: (prev: GameState) => GameState) => {
+    setState(prev => {
+      const next = mutator(prev);
+      if (next === prev) return prev;
+      historyRef.current.push(prev);
+      if (historyRef.current.length > 100) historyRef.current.shift();
+      setHistLen(historyRef.current.length);
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    const prev = historyRef.current.pop();
+    if (!prev) return;
+    setHistLen(historyRef.current.length);
+    setState(prev);
+    setSelected(null);
+  }, []);
 
   const drawFromStock = useCallback(() => {
-    setState(prev => {
+    apply(prev => {
       if (prev.won) return prev;
       if (prev.stock.length === 0) {
         // Reset: flip waste back to stock
@@ -121,7 +150,7 @@ export function useSolitaire(drawMode: DrawMode = 1) {
       };
     });
     setSelected(null);
-  }, [drawMode]);
+  }, [apply, drawMode]);
 
   const selectWaste = useCallback(() => {
     setState(prev => {
@@ -132,7 +161,7 @@ export function useSolitaire(drawMode: DrawMode = 1) {
   }, []);
 
   const selectTableauCard = useCallback((col: number, cardIdx: number) => {
-    setState(prev => {
+    apply(prev => {
       if (!prev.tableau[col][cardIdx]?.faceUp) {
         // Flip top face-down card
         if (cardIdx === prev.tableau[col].length - 1 && !prev.tableau[col][cardIdx].faceUp) {
@@ -148,10 +177,10 @@ export function useSolitaire(drawMode: DrawMode = 1) {
       if (s?.source === 'tableau' && s.col === col && s.cardIdx === cardIdx) return null;
       return { source: 'tableau', col, cardIdx };
     });
-  }, []);
+  }, [apply]);
 
   const moveToFoundation = useCallback((foundIdx: number) => {
-    setState(prev => {
+    apply(prev => {
       let card: Card | null = null;
       let sourceType: 'waste' | 'tableau' | null = null;
       let sourceCol = -1;
@@ -203,10 +232,10 @@ export function useSolitaire(drawMode: DrawMode = 1) {
       return next;
     });
     setSelected(null);
-  }, [selected, startRef]);
+  }, [apply, selected]);
 
   const moveToTableau = useCallback((toCol: number) => {
-    setState(prev => {
+    apply(prev => {
       if (!selected) return prev;
 
       let cards: Card[] = [];
@@ -245,11 +274,11 @@ export function useSolitaire(drawMode: DrawMode = 1) {
       return next;
     });
     setSelected(null);
-  }, [selected]);
+  }, [apply, selected]);
 
   // Auto-move top card to foundation
   const autoMoveToFoundation = useCallback(() => {
-    setState(prev => {
+    apply(prev => {
       const next = { ...prev, tableau: prev.tableau.map(p => [...p]), foundations: prev.foundations.map(f => [...f]) };
       let moved = true;
       while (moved) {
@@ -287,10 +316,18 @@ export function useSolitaire(drawMode: DrawMode = 1) {
       }
       next.moves = prev.moves + 1;
       const won = next.foundations.every(f => f.length === 13);
-      if (won) next.won = true;
+      if (won) {
+        next.won = true;
+        const time = Math.floor((Date.now() - startRef.current) / 1000);
+        const b = storage.solitaire.getBestTime();
+        if (time < b) { storage.solitaire.setBestTime(time); setBestTime(time); }
+        const w = storage.solitaire.getGamesWon() + 1;
+        storage.solitaire.setGamesWon(w);
+        setGamesWon(w);
+      }
       return next;
     });
-  }, []);
+  }, [apply]);
 
   const restart = useCallback(() => {
     const deck = shuffle(createDeck());
@@ -298,6 +335,10 @@ export function useSolitaire(drawMode: DrawMode = 1) {
     setState({ tableau, stock, waste, foundations, moves: 0, elapsed: 0, won: false });
     setSelected(null);
     setPaused(false);
+    setElapsed(0);
+    startRef.current = Date.now();
+    historyRef.current = [];
+    setHistLen(0);
   }, []);
 
   return {
@@ -306,6 +347,9 @@ export function useSolitaire(drawMode: DrawMode = 1) {
     paused,
     bestTime,
     gamesWon,
+    elapsed,
+    canUndo: histLen > 0,
+    undo,
     setPaused,
     drawFromStock,
     selectWaste,

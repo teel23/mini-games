@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { storage } from '@/lib/storage';
 
 export type ChessMode = 'ai' | 'pvp';
 export type ChessDifficulty = 'easy' | 'medium' | 'hard';
@@ -359,8 +360,8 @@ function getAIMove(board: Board, difficulty: ChessDifficulty, enPassant: number 
     return moves[Math.floor(Math.random() * moves.length)];
   }
 
-  const depth = difficulty === 'hard' ? 5 : 3;
-  const deadline = Date.now() + 2000; // 2s max
+  const depth = difficulty === 'hard' ? 4 : 3;
+  const deadline = Date.now() + 1500; // 1.5s max — keep the UI responsive on mobile
   let bestMove = moves[0];
   let bestVal = -Infinity;
   for (const m of moves) {
@@ -519,6 +520,16 @@ export function useChess() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentPlayer, gameOver, board, difficulty, enPassantTarget]);
+
+  // Record a win vs AI once (human plays white).
+  const winRecorded = useRef(false);
+  useEffect(() => {
+    if (gameOver && mode === 'ai' && winner === 'white' && !winRecorded.current) {
+      winRecorded.current = true;
+      storage.chess.setWins(storage.chess.getWins() + 1);
+    }
+    if (!gameOver) winRecorded.current = false;
+  }, [gameOver, mode, winner]);
 
   const restart = useCallback(() => {
     if (mode) start(mode, difficulty);

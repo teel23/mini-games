@@ -1,8 +1,14 @@
-const EPOCH = new Date('2024-01-01').getTime();
 const MS_PER_DAY = 86400000;
 
+// Local-midnight day number — consistent with getTodayString() so the daily
+// puzzle and the streak clock roll over at the SAME instant (local midnight).
+export function getLocalDayNumber(d: Date = new Date()): number {
+  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate()); // local midnight
+  return Math.floor(local.getTime() / MS_PER_DAY);
+}
+
 export function getDayIndex(listLength: number): number {
-  return Math.floor((Date.now() - EPOCH) / MS_PER_DAY) % listLength;
+  return ((getLocalDayNumber() % listLength) + listLength) % listLength;
 }
 
 export function getTodayString(): string {
@@ -14,9 +20,9 @@ export function isNewDay(lastDate: string): boolean {
   return lastDate !== getTodayString();
 }
 
-// Seeded RNG for daily puzzles
+// Seeded RNG for daily puzzles (deterministic integer seed in, [0,1) out)
 export function seededRng(seed: number): () => number {
-  let s = seed;
+  let s = Math.floor(seed) || 1;
   return () => {
     s = (s * 1664525 + 1013904223) & 0xffffffff;
     return (s >>> 0) / 0xffffffff;
@@ -24,5 +30,16 @@ export function seededRng(seed: number): () => number {
 }
 
 export function getDailySeed(): number {
-  return Math.floor((Date.now() - EPOCH) / MS_PER_DAY);
+  return getLocalDayNumber();
+}
+
+// Given the last completion date (YYYY-MM-DD) and the previous streak, return
+// the new streak. Same day = unchanged; consecutive day = +1; any gap = reset to 1.
+export function nextStreak(lastDate: string, prevStreak: number): number {
+  if (!lastDate) return 1;
+  const today = getLocalDayNumber();
+  const last = getLocalDayNumber(new Date(lastDate + 'T00:00:00'));
+  if (last === today) return prevStreak;
+  if (last === today - 1) return prevStreak + 1;
+  return 1;
 }

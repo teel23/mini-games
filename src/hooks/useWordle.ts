@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { DAILY_WORDS, VALID_GUESSES } from '@/lib/wordList';
-import { getDayIndex, getTodayString, isNewDay } from '@/lib/dateUtils';
-import { storage } from '@/lib/storage';
+import { getDayIndex, getTodayString, nextStreak } from '@/lib/dateUtils';
+import { storage, getItem, setItem } from '@/lib/storage';
 
 export type LetterState = 'correct' | 'present' | 'absent' | 'unknown';
 export type GameMode = 'daily' | 'random';
@@ -13,21 +13,24 @@ export interface GuessResult {
   states: LetterState[];
 }
 
+interface DailySave {
+  guesses: GuessResult[];
+  gameOver: boolean;
+  won: boolean;
+}
+
 function evaluateGuess(guess: string, target: string): LetterState[] {
   const result: LetterState[] = Array(5).fill('absent');
   const targetArr = target.split('');
   const guessArr = guess.split('');
   const used = Array(5).fill(false);
 
-  // First pass: correct positions
   for (let i = 0; i < 5; i++) {
     if (guessArr[i] === targetArr[i]) {
       result[i] = 'correct';
       used[i] = true;
     }
   }
-
-  // Second pass: present but wrong position
   for (let i = 0; i < 5; i++) {
     if (result[i] === 'correct') continue;
     for (let j = 0; j < 5; j++) {
@@ -38,14 +41,23 @@ function evaluateGuess(guess: string, target: string): LetterState[] {
       }
     }
   }
-
   return result;
 }
 
-function getTargetWord(mode: GameMode): string {
-  if (mode === 'daily') {
-    return DAILY_WORDS[getDayIndex(DAILY_WORDS.length)].toUpperCase();
+function buildLetterMap(guesses: GuessResult[]): Record<string, LetterState> {
+  const map: Record<string, LetterState> = {};
+  const priority: Record<LetterState, number> = { correct: 3, present: 2, absent: 1, unknown: 0 };
+  for (const g of guesses) {
+    g.states.forEach((s, i) => {
+      const letter = g.word[i];
+      if (!map[letter] || priority[s] > priority[map[letter]]) map[letter] = s;
+    });
   }
+  return map;
+}
+
+function getTargetWord(mode: GameMode): string {
+  if (mode === 'daily') return DAILY_WORDS[getDayIndex(DAILY_WORDS.length)].toUpperCase();
   return DAILY_WORDS[Math.floor(Math.random() * DAILY_WORDS.length)].toUpperCase();
 }
 
@@ -60,21 +72,43 @@ export function useWordle(mode: GameMode) {
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
 
-  // Load daily state
+  const dailyKey = `daily:${getTodayString()}`;
+
+  // Load streak + restore any in-progress / finished daily for today.
   useEffect(() => {
     setStreak(storage.wordle.getDailyStreak());
     setBestStreak(storage.wordle.getBestStreak());
 
     if (mode === 'daily') {
-      const lastDate = storage.wordle.getLastPlayedDate();
-      const today = getTodayString();
-      if (lastDate === today && storage.wordle.getDailySolved()) {
-        // Already solved today — show solved state
-        setWon(true);
-        setGameOver(true);
+      const saved = getItem<DailySave | null>('wordle', dailyKey, null);
+      if (saved && saved.guesses) {
+        setGuesses(saved.guesses);
+        setGameOver(saved.gameOver);
+        setWon(saved.won);
+        setLetterMap(buildLetterMap(saved.guesses));
       }
     }
-  }, [mode]);
+  }, [mode, dailyKey]);
+
+  const finishDaily = useCallback((finalGuesses: GuessResult[], didWin: boolean) => {
+    setItem<DailySave>('wordle', dailyKey, { guesses: finalGuesses, gameOver: true, won: didWin });
+    const today = getTodayString();
+    if (storage.wordle.getLastPlayedDate() === today) return; // already counted today
+    storage.wordle.setGamesPlayed(storage.wordle.getGamesPlayed() + 1);
+    if (didWin) {
+      const ns = nextStreak(storage.wordle.getLastPlayedDate(), storage.wordle.getDailyStreak());
+      const nb = Math.max(storage.wordle.getBestStreak(), ns);
+      setStreak(ns); setBestStreak(nb);
+      storage.wordle.setDailyStreak(ns);
+      storage.wordle.setBestStreak(nb);
+      storage.wordle.setWins(storage.wordle.getWins() + 1);
+    } else {
+      setStreak(0);
+      storage.wordle.setDailyStreak(0);
+    }
+    storage.wordle.setLastPlayedDate(today);
+    storage.wordle.setDailySolved(didWin);
+  }, [dailyKey]);
 
   const addLetter = useCallback((letter: string) => {
     if (gameOver || currentInput.length >= 5) return;
@@ -88,6 +122,7 @@ export function useWordle(mode: GameMode) {
   }, []);
 
   const submitGuess = useCallback(() => {
+    if (gameOver) return;
     if (currentInput.length !== 5) { setError('Not enough letters'); return; }
 
     const word = currentInput.toUpperCase();
@@ -95,50 +130,22 @@ export function useWordle(mode: GameMode) {
     if (!isValid) { setError('Not in word list'); return; }
 
     const states = evaluateGuess(word, target);
-    const newGuess: GuessResult = { word, states };
-    const newGuesses = [...guesses, newGuess];
+    const newGuesses = [...guesses, { word, states }];
     setGuesses(newGuesses);
     setCurrentInput('');
-
-    // Update letter map
-    const newMap = { ...letterMap };
-    states.forEach((s, i) => {
-      const letter = word[i];
-      const priority: Record<LetterState, number> = { correct: 3, present: 2, absent: 1, unknown: 0 };
-      if (!newMap[letter] || priority[s] > priority[newMap[letter]]) {
-        newMap[letter] = s;
-      }
-    });
-    setLetterMap(newMap);
+    setLetterMap(buildLetterMap(newGuesses));
 
     if (states.every(s => s === 'correct')) {
       setWon(true);
       setGameOver(true);
-      if (mode === 'daily') {
-        const today = getTodayString();
-        const lastDate = storage.wordle.getLastPlayedDate();
-        const wasYesterday = isNewDay(lastDate) && !isNewDay(lastDate);
-        const newStreak = streak + 1;
-        const newBest = Math.max(bestStreak, newStreak);
-        setStreak(newStreak);
-        setBestStreak(newBest);
-        storage.wordle.setDailyStreak(newStreak);
-        storage.wordle.setBestStreak(newBest);
-        storage.wordle.setLastPlayedDate(today);
-        storage.wordle.setDailySolved(true);
-        storage.wordle.setGamesPlayed(storage.wordle.getGamesPlayed() + 1);
-        storage.wordle.setWins(storage.wordle.getWins() + 1);
-      }
+      if (mode === 'daily') finishDaily(newGuesses, true);
     } else if (newGuesses.length >= 6) {
       setGameOver(true);
-      if (mode === 'daily') {
-        storage.wordle.setDailyStreak(0);
-        setStreak(0);
-        storage.wordle.setLastPlayedDate(getTodayString());
-        storage.wordle.setGamesPlayed(storage.wordle.getGamesPlayed() + 1);
-      }
+      if (mode === 'daily') finishDaily(newGuesses, false);
+    } else if (mode === 'daily') {
+      setItem<DailySave>('wordle', dailyKey, { guesses: newGuesses, gameOver: false, won: false });
     }
-  }, [currentInput, guesses, target, letterMap, mode, streak, bestStreak]);
+  }, [gameOver, currentInput, guesses, target, mode, finishDaily, dailyKey]);
 
   const restart = useCallback(() => {
     if (mode === 'daily') return; // Can't restart daily

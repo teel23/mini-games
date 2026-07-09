@@ -21,32 +21,60 @@ const WATER_COLORS = [
 
 export type Tube = string[];
 
-function generatePuzzle(colors: number, tubes: number): Tube[] {
-  // Create filled tubes
+function shuffleIntoTubes(colors: number, tubes: number): Tube[] {
   const allColors: string[] = [];
-  for (let i = 0; i < colors; i++) {
-    for (let j = 0; j < CAPACITY; j++) {
+  for (let i = 0; i < colors; i++)
+    for (let j = 0; j < CAPACITY; j++)
       allColors.push(WATER_COLORS[i]);
-    }
-  }
 
-  // Shuffle
   for (let i = allColors.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [allColors[i], allColors[j]] = [allColors[j], allColors[i]];
   }
 
   const result: Tube[] = [];
-  for (let i = 0; i < colors; i++) {
-    result.push(allColors.slice(i * CAPACITY, (i + 1) * CAPACITY));
-  }
-
-  // Add empty tubes
-  for (let i = colors; i < tubes; i++) {
-    result.push([]);
-  }
-
+  for (let i = 0; i < colors; i++) result.push(allColors.slice(i * CAPACITY, (i + 1) * CAPACITY));
+  for (let i = colors; i < tubes; i++) result.push([]);
   return result;
+}
+
+function canonical(tubes: Tube[]): string {
+  return tubes.map(t => t.join(',')).sort().join('|');
+}
+
+// Bounded DFS solver — returns true if the layout is solvable.
+function isSolvable(start: Tube[]): boolean {
+  const seen = new Set<string>();
+  let nodes = 0;
+  const CAP = 120000;
+  function dfs(tubes: Tube[]): boolean {
+    if (isSolved(tubes)) return true;
+    if (nodes++ > CAP) return false;
+    const k = canonical(tubes);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    for (let i = 0; i < tubes.length; i++) {
+      for (let j = 0; j < tubes.length; j++) {
+        if (i === j) continue;
+        // Skip pouring a tube that's already uniform into an empty tube (no progress).
+        if (tubes[j].length === 0 && tubes[i].length === CAPACITY && tubes[i].every(c => c === tubes[i][0])) continue;
+        if (canPour(tubes[i], tubes[j])) {
+          if (dfs(pour(tubes, i, j))) return true;
+        }
+      }
+    }
+    return false;
+  }
+  return dfs(start.map(t => [...t]));
+}
+
+function generatePuzzle(colors: number, tubes: number): Tube[] {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const candidate = shuffleIntoTubes(colors, tubes);
+    // Reject already-solved or unsolvable layouts.
+    if (!isSolved(candidate) && isSolvable(candidate)) return candidate;
+  }
+  return shuffleIntoTubes(colors, tubes); // fallback (extremely rare)
 }
 
 function canPour(from: Tube, to: Tube): boolean {

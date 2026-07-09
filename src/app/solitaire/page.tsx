@@ -316,10 +316,13 @@ function Game({ drawMode, onBack }: { drawMode: DrawMode; onBack: () => void }) 
       <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: '#2e2e2e' }}>
         <button onClick={() => game.setPaused(true)} className="text-xl" style={{ color: '#888' }}>⏸</button>
         <div className="flex gap-3 text-sm" style={{ color: '#888' }}>
+          <span>{`${Math.floor(game.elapsed / 60)}:${String(game.elapsed % 60).padStart(2, '0')}`}</span>
           <span>Moves: {state.moves}</span>
-          <span>Won: {game.gamesWon}</span>
         </div>
-        <button onClick={game.autoMoveToFoundation} className="text-xs font-semibold px-2 py-1 rounded" style={{ background: ACCENT + '22', color: ACCENT }}>Auto</button>
+        <div className="flex gap-2">
+          <button onClick={game.undo} disabled={!game.canUndo} className="text-xs font-semibold px-2 py-1 rounded" style={{ background: '#ffffff11', color: game.canUndo ? '#ccc' : '#555', minHeight: 32 }}>↩ Undo</button>
+          <button onClick={game.autoMoveToFoundation} className="text-xs font-semibold px-2 py-1 rounded" style={{ background: ACCENT + '22', color: ACCENT, minHeight: 32 }}>Auto</button>
+        </div>
       </div>
 
       {/* Top area: stock, waste, foundations */}

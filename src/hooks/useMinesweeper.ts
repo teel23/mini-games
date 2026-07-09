@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { seededRng, getDailySeed, getTodayString } from '@/lib/dateUtils';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { seededRng, getDailySeed, getTodayString, nextStreak } from '@/lib/dateUtils';
 import { storage } from '@/lib/storage';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -93,15 +93,26 @@ export function useMinesweeper(difficulty: Difficulty, mode: GameMode) {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
+  // Drive the clock: run only while started, not paused, and not finished.
+  useEffect(() => {
+    if (!started || gameOver || won || paused) { stopTimer(); return; }
+    startTimer();
+    return stopTimer;
+  }, [started, gameOver, won, paused, startTimer, stopTimer]);
+
   const initGrid = useCallback((safeR: number, safeC: number) => {
     const { rows, cols, mines } = config;
     let rng: (() => number) | undefined;
     if (mode === 'daily') rng = seededRng(getDailySeed() * 100 + ['easy','medium','hard'].indexOf(difficulty));
 
-    // Keep regenerating until (safeR, safeC) is safe
+    // Keep regenerating until (safeR, safeC) is safe — stay deterministic for daily.
+    let attempt = 0;
     let g = buildGrid(rows, cols, mines, rng);
     while (g[safeR][safeC].mine) {
-      rng = mode === 'daily' ? seededRng(getDailySeed() * 100 + Math.random() * 1000) : undefined;
+      attempt++;
+      rng = mode === 'daily'
+        ? seededRng(getDailySeed() * 100 + ['easy', 'medium', 'hard'].indexOf(difficulty) + attempt * 7919)
+        : undefined;
       g = buildGrid(rows, cols, mines, rng);
     }
     return g;
@@ -115,7 +126,6 @@ export function useMinesweeper(difficulty: Difficulty, mode: GameMode) {
       if (!g) {
         g = initGrid(r, c);
         setStarted(true);
-        startTimer();
       }
 
       const cell = g[r][c];
@@ -143,9 +153,11 @@ export function useMinesweeper(difficulty: Difficulty, mode: GameMode) {
         }
         if (mode === 'daily') {
           const today = getTodayString();
-          // Simple: increment streak (not checking yesterday gap for brevity)
-          const s = storage.minesweeper.getDailyStreak() + 1;
-          storage.minesweeper.setDailyStreak(s);
+          if (storage.minesweeper.getLastDaily() !== today) {
+            const s = nextStreak(storage.minesweeper.getLastDaily(), storage.minesweeper.getDailyStreak());
+            storage.minesweeper.setDailyStreak(s);
+            storage.minesweeper.setLastDaily(today);
+          }
         }
       }
 
